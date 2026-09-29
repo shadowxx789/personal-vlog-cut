@@ -19,9 +19,21 @@
 
 ## gen_bgm.py 验证点
 
-- 同 seed 跑两次 md5 相同；不同 seed md5 不同（seed 必须真的进随机流）。
-- `--print-chords` 加外部断言：任何和弦相对根音不得出现小三度（3 半音）。
-- 150s 生成耗时 ≤10s（必须 numpy 矢量化，不许逐样本 Python 循环）。
+- 同 seed 同参数跑两次 md5 相同；换 seed md5 不同。
+- `--print-chords` 输出 MIDI 整数（v2 输出的是 Hz，旧断言要改）。外部再断言一遍：
+  ```bash
+  python scripts/gen_bgm.py --seed 3 --print-chords | python3 -c '
+  import json,sys; d=json.load(sys.stdin); T=d["tonic_midi"]; M={0,2,4,5,7,9,11}
+  for b in d["bars"]:
+      r={(m-b["root"])%12 for m in b["midi"]}
+      assert 3 not in r and (4 in r or 5 in r), b
+      assert all((m-T)%12 in M for m in b["midi"]), b
+  print("chords OK", d["n_bars"], "bars,", d["notes_checked"], "notes")'
+  ```
+- 三种预设 × 三个 seed 都要能过自检（脚本内部自检失败会非零退出）。
+- `--dur 180` 渲染耗时 ≤ 10s。
+- 负例：把 `scripts/legacy/gen_bgm_v2.py` 临时改名后，`--style quiet` 必须非零退出；测完改回。
+- 正例：`--style quiet --seed 1 --dur 20` 能出 wav（legacy 转调可用）。
 
 ## 链路验证点
 
@@ -36,4 +48,5 @@
 
 ## 试听件
 
-A/B 各出一版（`--bar-gap off|on`、60s、当天新 seed、ASCII 文件名），`MEDIA:` 发上来。
+同一个当天新 seed，60s，出 3 版：`--preset default` / `plain` / `lively`，
+文件名 `bgm_<preset>_s<seed>.wav`（脚本默认就是 ASCII），`MEDIA:` 发上来，不要自己选。

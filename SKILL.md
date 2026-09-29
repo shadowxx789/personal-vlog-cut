@@ -50,7 +50,7 @@ version: 2.0.0
 
 | 脚本 | 干什么 |
 |---|---|
-| `scripts/gen_bgm.py` | 生成垫乐（`--style bright` 默认，`--seed` 必填；bright 无 IIR 无厚低音，只用大调走向） |
+| `scripts/gen_bgm.py` | 生成垫乐 v3（指弹风；`--seed` 必填，`--preset default\|plain\|lively`；内置小三度和音阶自检；`--style quiet` 转调 legacy v2，不推荐） |
 | `scripts/pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4（横摇锁 y 只移 x / 竖摇从下往上；**禁 zoompan**） |
 | `scripts/mix_bgm.sh` | 原声 + 垫乐 sidechain + `alimiter`，输出 `vN_bgm.mp4` 归档母版 |
 | `scripts/mute_segment.sh` | 单切静音（`apad` 到视频时长，音画差 ≤1 帧） |

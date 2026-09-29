@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## v2.1.0（2026-09-29）
+
+BGM 生成器换成 v3（指弹拨弦 + 短贝斯 + 稀疏钟琴 + 很轻的沙锤 + 小房间混响）。v2 原样移到 `scripts/legacy/gen_bgm_v2.py`，只供 `--style quiet` 转调使用。
+
+### v2 弃用原因（试听被评价为阴郁）
+
+- (a) `pluck_base = 62 + root_pc`：拨弦比主调高一个全音（D 调弹成 E 五声，G# 撞 IV 和弦的 G）。
+- (b) 垫子是 D2/A1 纯正弦密集三和弦，低音区发糊发闷。
+- (c) 和弦形状随机抽到 power/sus4，约一半小节没有三度。
+- (d) 10s 一个和弦、无律动、无混响、每小节淡到 0。
+
+### 变更
+
+- 新增 `--preset default|plain|lively`；单独给的参数会覆盖预设。
+- 内置两道自检（失败就非零退出、不出文件）：和弦不得含小三度且必须有大三度/挂四；所有音必须在主调大调音阶内。
+- `--print-chords` 改成只作曲不渲染，输出 **MIDI 整数**（v2 输出 Hz），测试断言已同步更新。
+- 删掉 `--bar-gap`、`--bass` 参数（v3 不再使用长垫）。
+- 文档同步：preferences.md「BGM 口味」、testing.md「gen_bgm.py 验证点 / 试听件」、SKILL.md §5、ffmpeg-recipes.md「垫乐」。
+
+### 待 用户 决定
+
+- 默认预设：试听 default / plain / lively 后选定。
 ## v2.0.0（2026-09-28）
 
 重构：规则按主题拆进 `references/`，每条只写一处；命令统一 1080p；脚本从旧模板目录迁到 `scripts/` 并修 3 个 BGM bug；冲突按 用户 裁决改（C1–C5）。旧版整体备份在 `../personal-vlog-cut.bak-20260928/`。
