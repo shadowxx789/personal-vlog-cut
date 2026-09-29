@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""gen_bgm.py v3.1.0 — 原创夏日垫乐。
-
-两种乐器（按预设选）：
-  synth  ：指弹拨弦 + 短贝斯 + 稀疏钟琴 + 很轻的沙锤 + 小房间混响（v3.0.0，default/plain/lively）
-  guitar ：木吉他（Karplus-Strong 物理弦模型 + 木箱共鸣），真实开放和弦把位，
-           A 段 Travis 指弹、B 段轻扫弦、喘口气段只拨两三下（v3.1.0 新增，acoustic）
+"""gen_bgm.py v3.0.0 — 明亮夏日垫乐：指弹拨弦 + 短贝斯 + 稀疏钟琴 + 很轻的沙锤 + 小房间混响。
 
 为什么不用 v2（已移到 scripts/legacy/gen_bgm_v2.py）：
   (a) pluck_base=62+root_pc，拨弦比主调高一个全音（D 调弹成 E 五声，G# 撞 IV 和弦的 G）
@@ -12,22 +7,22 @@
   (c) 和弦形状随机抽到 power/sus4，约一半小节没有三度
   (d) 10s 一个和弦、无律动、无混响、每小节淡到 0 → 听着阴郁
 
+v3：中高音区、每小节一个和弦、带泛音的拨弦、不做整轨低通、只用大调/挂留和弦、
+有轻律动、每 4 小节换一种织体、中间插「喘口气」段。
+
 自检（任一失败都退出非零，不出文件）：
   1. 和弦相对根音不得含小三度，必须含大三度或挂四
-  2. 所有音必须在主调大调音阶内
+  2. 所有拨弦/贝斯/钟琴音必须在主调大调音阶内
 
 用法：
   python gen_bgm.py --seed 20260929 --dur 180 --out bgm.wav
-  python gen_bgm.py --seed 7 --preset acoustic --dur 60
-  python gen_bgm.py --seed 7 --preset acoustic --no-strum     # 纯指弹，不扫弦
-  python gen_bgm.py --seed 7 --print-chords                    # 只打印和弦表 JSON，不渲染
-  python gen_bgm.py --seed 7 --style quiet --out q.wav         # 转调 legacy v2（不推荐）
+  python gen_bgm.py --seed 7 --preset plain --dur 60 --out s7_plain.wav
+  python gen_bgm.py --seed 7 --print-chords            # 只打印和弦表 JSON，不渲染
+  python gen_bgm.py --seed 7 --style quiet --out q.wav  # 转调 legacy v2（不推荐）
 每次新片换 seed；同一个 seed + 同一组参数可以完整复现（md5 相同）。
-v3.1.0 不改变 default/plain/lively 的输出（与 v3.0.0 逐字节相同）。
 输出长度 = 按 --dur 取整后的小节数 + 约 4.5 秒尾音。
 """
 import argparse
-import bisect
 import json
 import math
 import os
@@ -38,7 +33,7 @@ import time
 import wave
 from pathlib import Path
 
-VERSION = "3.1.0"
+VERSION = "3.0.0"
 HERE = Path(__file__).resolve().parent
 LEGACY = HERE / "legacy" / "gen_bgm_v2.py"
 
@@ -109,43 +104,10 @@ PATTERNS = [
 ]
 PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]  # 大调五声，两个八度
 
-# ---- 木吉他：D 形开放和弦（capo 概念整体移调）。弦序 0..5 = 低 E … 高 e；None = 不弹
-# 值：(各弦 MIDI, 根音 MIDI, (拇指根音弦, 拇指交替弦))
-GTR_SHAPES = {
-    "I":    ([None, 45, 50, 57, 62, 66], 50, (2, 1)),   # D     x00232
-    "I6":   ([None, 45, 50, 57, 59, 66], 50, (2, 1)),   # D6    x00202
-    "IV":   ([43, 47, 50, 55, 62, 67], 43, (0, 2)),     # G     320033
-    "IV9":  ([43, 47, 50, 57, 59, 67], 43, (0, 2)),     # Gadd9 320203
-    "V":    ([None, 45, 52, 57, 61, 64], 45, (1, 2)),   # A     x02220
-    "Vsus": ([None, 45, 52, 57, 62, 64], 45, (1, 2)),   # Asus4 x02230
-}
-# Travis 指弹：拇指固定在 0/2/4/6 位交替低音；这里是手指（八分位 -> 弦）
-GTR_FINGER = [
-    {1: 4, 3: 3, 5: 4, 7: 3},
-    {1: 5, 3: 4, 5: 3, 7: 4},
-    {0: 5, 3: 4, 5: 3, 7: 4},
-    {1: 3, 3: 5, 5: 4, 6: 5, 7: 3},
-]
-# 轻扫弦：下 · 下上 · 上下上（八分位, 是否下扫, 力度）
-GTR_STRUM = [(0, True, 0.34), (2, True, 0.28), (3, False, 0.20),
-             (5, False, 0.22), (6, True, 0.28), (7, False, 0.18)]
-GTR_MAX = 3.2          # 普通音最长余音（秒），同弦再拨或换和弦会提前闷掉
-GTR_MAX_FINAL = 4.4    # 最后一扫的余音
-GTR_PICK_POS = 0.13    # 拨弦位置（弦长比例，越小越靠琴桥越亮）
-GTR_DETUNE_CENTS = (-2.0, 0.0, 2.5)
-BODY_MODES = ((102.0, 0.070, 1.0), (208.0, 0.045, 0.8), (395.0, 0.030, 0.5),
-              (600.0, 0.020, 0.35), (1050.0, 0.012, 0.2))  # (Hz, 衰减秒, 相对幅度)
-BODY_MIX = 0.7
-
 PRESETS = {
-    "default":  dict(key="D", bpm=100.0, density=0.85, reverb=0.35, bell=True, shaker=True,
-                     instrument="synth", strum=False),
-    "plain":    dict(key="D", bpm=100.0, density=0.70, reverb=0.35, bell=False, shaker=False,
-                     instrument="synth", strum=False),
-    "lively":   dict(key="E", bpm=108.0, density=0.85, reverb=0.30, bell=True, shaker=True,
-                     instrument="synth", strum=False),
-    "acoustic": dict(key="D", bpm=96.0, density=0.85, reverb=0.28, bell=False, shaker=False,
-                     instrument="guitar", strum=True),
+    "default": dict(key="D", bpm=100.0, density=0.85, reverb=0.35, bell=True, shaker=True),
+    "plain":   dict(key="D", bpm=100.0, density=0.70, reverb=0.35, bell=False, shaker=False),
+    "lively":  dict(key="E", bpm=108.0, density=0.85, reverb=0.30, bell=True, shaker=True),
 }
 
 
@@ -158,16 +120,7 @@ def tonic(key):
     return t - 12 if t >= 66 else t  # 主音落在 G3..F4
 
 
-def phrase_roles(n_phr):
-    cycle = ["A", "B", "A", "B", "breath"]
-    roles = ["intro"] + [cycle[(i - 1) % len(cycle)] for i in range(1, n_phr)]
-    if n_phr > 2:
-        roles[-1] = "A"  # 收尾那句轻一点
-    return roles
-
-
-# ---------------------------------------------------------------- 作曲：synth（v3.0.0 原样）
-
+# ---------------------------------------------------------------- 作曲
 
 def make_motif(rng):
     """两小节的小旋律：3–5 个四分音符，第一拍必有，略往上走。"""
@@ -188,7 +141,10 @@ def compose(seed, key, bpm, dur, density, bell_on, shaker_on):
     n_bars = max(8, int(round(dur / bar)))
     n_phr = math.ceil(n_bars / 4)
 
-    roles = phrase_roles(n_phr)
+    cycle = ["A", "B", "A", "B", "breath"]
+    roles = ["intro"] + [cycle[(i - 1) % len(cycle)] for i in range(1, n_phr)]
+    if n_phr > 2:
+        roles[-1] = "A"  # 收尾那句轻一点
     drop = (1.0 - density) * 0.6
 
     events, bars = [], []
@@ -260,120 +216,6 @@ def compose(seed, key, bpm, dur, density, bell_on, shaker_on):
             "roles": roles, "bars": bars, "events": events}
 
 
-# ---------------------------------------------------------------- 作曲：guitar（v3.1.0）
-
-def compose_guitar(seed, key, bpm, dur, density, strum_on, shaker_on):
-    rng = np.random.default_rng(seed)
-    T = tonic(key)
-    off = ((KEY_OFFSET[key] - 2 + 5) % 12) - 5   # 相对 D 形的移调，-5..+6
-    bar = 240.0 / bpm
-    eighth = bar / 8
-    n_bars = max(8, int(round(dur / bar)))
-    n_phr = math.ceil(n_bars / 4)
-    roles = phrase_roles(n_phr)
-    drop = (1.0 - density) * 0.6
-
-    raw, bars, events = [], [], []
-
-    def hit(t, s, shape, vel):
-        if shape[s] is not None:
-            raw.append((max(0.0, float(t)), s, int(shape[s]), float(vel)))
-
-    def strum(t, shape, down, vel, spacing):
-        strings = [s for s in range(6) if shape[s] is not None]
-        if not down:
-            strings = strings[::-1][:4]      # 上扫只带到高音 4 根
-        for j, s in enumerate(strings):
-            hit(t + j * spacing, s, shape, vel * (0.85 + 0.3 * rng.random()))
-
-    last = None
-    for p in range(n_phr):
-        role = roles[p]
-        last = int(rng.choice([i for i in range(len(PROGS)) if i != last]))
-        prog = PROGS[last]
-        fpat = GTR_FINGER[int(rng.integers(len(GTR_FINGER)))]
-
-        for b in range(4):
-            bi = p * 4 + b
-            if bi >= n_bars:
-                break
-            tb = bi * bar
-            final = bi == n_bars - 1
-            name = "I" if final else prog[b]
-            shape0, root0, (rs, alt) = GTR_SHAPES[name]
-            shape = [None if m is None else m + off for m in shape0]
-            bars.append({"bar": bi, "t": round(tb, 3), "role": role, "chord": name,
-                         "root": root0 + off, "midi": sorted(m for m in shape if m is not None),
-                         "shape": shape})
-
-            def at(slot):
-                return tb + slot * eighth + (0.012 if slot % 2 else 0.0) + rng.normal(0, 0.006)
-
-            if final:  # 最后一记慢下扫，让它自然响完
-                strum(tb, shape, True, 0.55, 0.035)
-                continue
-
-            if role == "intro":  # 慢分解：拇指根音 + 三根高音往上走
-                hit(at(0), rs, shape, 0.55)
-                for slot, s in ((2, 3), (4, 4), (6, 5)):
-                    if rng.random() < drop:
-                        continue
-                    hit(at(slot), s, shape, 0.40 + 0.10 * rng.random())
-            elif role == "breath":  # 喘口气：一记捏弦 + 一个交替低音，让它响
-                t0 = at(0)
-                hit(t0, rs, shape, 0.55)
-                hit(t0 + 0.004, 5, shape, 0.42)
-                hit(at(4), alt, shape, 0.38)
-            elif role == "B" and strum_on:  # 轻扫弦
-                for slot, down, v in GTR_STRUM:
-                    if not down and rng.random() < drop * 1.5:
-                        continue
-                    sp = rng.uniform(0.008, 0.013) if down else rng.uniform(0.006, 0.010)
-                    strum(at(slot), shape, down, v, sp)
-            else:  # A 段（或关掉扫弦的 B 段）：Travis 指弹
-                for slot, s in ((0, rs), (2, alt), (4, rs), (6, alt)):
-                    hit(at(slot), s, shape, (0.55 if slot in (0, 4) else 0.45) + 0.08 * rng.random())
-                extra = 0.08 if role == "B" else 0.0
-                for slot, s in fpat.items():
-                    if slot and rng.random() < drop:
-                        continue
-                    hit(at(slot) + 0.003, s, shape, 0.36 + extra + 0.12 * rng.random())
-
-            if role == "B" and shaker_on:
-                for slot in (1, 3, 5, 7):
-                    events.append(("shaker", float(tb + slot * eighth + 0.012), None, 0.72,
-                                   float(0.05 + 0.02 * rng.random()), 0))
-
-    # 每根弦同一时间只响一个音：同弦再拨、或换和弦后这根弦音高变了，就提前闷掉
-    raw.sort(key=lambda r: r[0])
-    bar_ts = [b["t"] for b in bars]
-    shapes = [b["shape"] for b in bars]
-    final_t = bar_ts[-1]
-    nxt, last_on = [None] * len(raw), {}
-    for i, (t, s, n, v) in enumerate(raw):
-        if s in last_on:
-            nxt[last_on[s]] = t
-        last_on[s] = i
-    for i, (t, s, n, v) in enumerate(raw):
-        d = GTR_MAX_FINAL if t >= final_t - 1e-6 else GTR_MAX
-        if nxt[i] is not None:
-            d = min(d, nxt[i] - t + 0.008)
-        j = bisect.bisect_right(bar_ts, t + 0.05)
-        while j < len(bars):
-            if shapes[j][s] != n:
-                d = min(d, bar_ts[j] - 0.015 - t)
-                break
-            j += 1
-        d = max(d, 0.06)
-        level = 1 if v >= 0.45 else 0
-        variant = int(rng.integers(3))
-        events.append(("gtr", float(t), int(n), 0.40 + 0.04 * s, float(v * 0.55),
-                       level * 10 + variant, float(d)))
-
-    return {"T": T, "key": key, "bpm": bpm, "bar": bar, "n_bars": n_bars,
-            "roles": roles, "bars": bars, "events": events, "instrument": "guitar"}
-
-
 def check_song(song):
     """两道自检。失败直接退出非零。返回检查过的音符数。"""
     for b in song["bars"]:
@@ -392,8 +234,7 @@ def check_song(song):
     return n
 
 
-# ---------------------------------------------------------------- 音色：synth（v3.0.0 原样）
-
+# ---------------------------------------------------------------- 音色
 
 class Synth:
     """向量化加法合成，按音高缓存。"""
@@ -452,80 +293,6 @@ def shaker(rng):
     return x * np.minimum(1.0, t / 0.004) * np.exp(-t / 0.018) * 0.5
 
 
-# ---------------------------------------------------------------- 音色：木吉他（v3.1.0）
-
-class GuitarStrings:
-    """Karplus-Strong 弦模型：噪声+三角激励、拨弦位置梳状滤波、频率相关衰减。
-    按周期分块向量化（同一块内只依赖上一周期），再重采样修正音高。按 (音高, 力度档, 变体) 缓存。"""
-
-    def __init__(self, seed):
-        self.seed = int(seed)
-        self.cache = {}
-
-    def pluck(self, note, level, variant):
-        key = (note, level, variant)
-        if key in self.cache:
-            return self.cache[key]
-        f = midi_hz(note) * 2.0 ** (GTR_DETUNE_CENTS[variant] / 1200.0)
-        S = 0.40 if level else 0.47                  # 损耗滤波权重：越小越亮
-        P = int(SR / f - S)
-        f_gen = SR / (P + S)
-        ratio = f / f_gen                            # ≤ 1，重采样把音高拉准
-        t60 = float(np.clip(3.6 * (110.0 / f) ** 0.45, 1.2, 4.5))
-        n_out = int(min(GTR_MAX_FINAL, 1.2 * t60) * SR)
-        n_gen = int(n_out * ratio) + 3
-
-        rng = np.random.default_rng([self.seed, int(note), int(level), int(variant)])
-        noise = rng.uniform(-1.0, 1.0, P)
-        for _ in range(1 if level else 3):           # 轻拨更圆，重拨更脆
-            noise = 0.5 * (noise + np.roll(noise, 1))
-        k = max(1, int(GTR_PICK_POS * P))
-        tri = np.concatenate([np.linspace(0.0, 1.0, k, endpoint=False),
-                              np.linspace(1.0, 0.0, P - k)])
-        x = 0.55 * noise / max(float(np.max(np.abs(noise))), 1e-9) + 0.45 * tri
-        x -= x.mean()
-        x = x - 0.9 * np.roll(x, k)                  # 拨弦位置
-        x /= max(float(np.max(np.abs(x))), 1e-9)
-
-        rho = 10.0 ** (-3.0 / (t60 * f_gen))
-        buf = np.zeros(n_gen + 1)                    # buf[i+1] = y[i]，buf[0] = 0
-        buf[1:P + 1] = x
-        for s in range(P, n_gen, P):
-            e = min(s + P, n_gen)
-            buf[s + 1:e + 1] = rho * ((1.0 - S) * buf[s + 1 - P:e + 1 - P] + S * buf[s - P:e - P])
-
-        y = np.interp(np.arange(n_out) * ratio, np.arange(n_gen), buf[1:])
-        y *= np.minimum(1.0, np.arange(n_out) / (0.0015 * SR))
-        y /= max(float(np.max(np.abs(y))), 1e-9)
-        self.cache[key] = y
-        return y
-
-
-def body_ir(scale):
-    """木箱共鸣：直达声 + 几个衰减共鸣峰（左右声道 scale 略不同）。"""
-    n = int(0.25 * SR)
-    t = np.arange(n) / SR
-    modes = np.zeros(n)
-    for f, tau, a in BODY_MODES:
-        modes += a * np.exp(-t / tau) * np.sin(2 * np.pi * f * scale * t)
-    modes *= BODY_MIX / max(float(np.max(np.abs(np.fft.rfft(modes, 1 << 15)))), 1e-9)
-    modes[0] += 1.0
-    return modes
-
-
-def fft_conv(x, h, block=1 << 16):
-    """分块 FFT 卷积（overlap-add），输出与 x 等长。"""
-    m = len(h)
-    nfft = 1 << int(math.ceil(math.log2(block + m - 1)))
-    H = np.fft.rfft(h, nfft)
-    y = np.zeros(len(x) + m - 1)
-    for s in range(0, len(x), block):
-        seg = x[s:s + block]
-        out = np.fft.irfft(np.fft.rfft(seg, nfft) * H, nfft)[:len(seg) + m - 1]
-        y[s:s + len(out)] += out
-    return y[:len(x)]
-
-
 def place(L, R, sig, t0, pan, gain):
     s = int(round(t0 * SR))
     if s < 0:
@@ -575,20 +342,7 @@ def render(song, seed, reverb_amt):
     nrng = np.random.default_rng(seed + 7919)  # 只给沙锤噪声用，不影响作曲
     N = int((song["n_bars"] * song["bar"] + TAIL) * SR)
     L, R = np.zeros(N), np.zeros(N)
-    gtr, GL, GR = None, None, None
-    for e in song["events"]:
-        kind, t, note, pan, gain, var = e[:6]
-        if kind == "gtr":
-            if gtr is None:
-                gtr, GL, GR = GuitarStrings(seed), np.zeros(N), np.zeros(N)
-            sig = gtr.pluck(note, var // 10, var % 10)
-            n = max(1, int(e[6] * SR))
-            if n < len(sig):
-                sig = sig[:n].copy()
-                f = min(int(0.025 * SR), n)
-                sig[-f:] *= np.linspace(1.0, 0.0, f)
-            place(GL, GR, sig, t, pan, gain)
-            continue
+    for kind, t, note, pan, gain, var in song["events"]:
         if kind == "pluck":
             sig = syn.pluck(note, var)
         elif kind == "bass":
@@ -598,10 +352,6 @@ def render(song, seed, reverb_amt):
         else:
             sig = shaker(nrng)
         place(L, R, sig, t, pan, gain)
-
-    if gtr is not None:  # 吉他总线过木箱共鸣，左右略不同
-        L = L + fft_conv(GL, body_ir(1.0))
-        R = R + fft_conv(GR, body_ir(1.035))
 
     if reverb_amt > 0:
         L = L + reverb(L, 0.0, reverb_amt)
@@ -639,28 +389,22 @@ def run_legacy(a):
 
 def main():
     ap = argparse.ArgumentParser(
-        description=f"原创夏日垫乐 v{VERSION}（16-bit 48kHz 立体声，峰值约 −3 dBFS）",
+        description=f"明亮夏日垫乐 v{VERSION}（16-bit 48kHz 立体声，峰值约 −3 dBFS）",
         epilog="预设：default（指弹+钟琴+沙锤）/ plain（只有吉他和贝斯，稀一点）/ "
-               "lively（E 调、108 BPM）/ acoustic（木吉他：Travis 指弹 + 轻扫弦，96 BPM）。"
-               "单独给的参数会覆盖预设。每次新片换 seed。",
+               "lively（E 调、108 BPM）。单独给的参数会覆盖预设。每次新片换 seed。",
     )
-    ap.add_argument("--seed", type=int, required=True, help="必填，≥0；同 seed 同参数可复现")
+    ap.add_argument("--seed", type=int, required=True, help="必填；同 seed 同参数可复现")
     ap.add_argument("--dur", type=float, default=180.0, help="秒，按整小节取整，另加约 4.5s 尾音")
     ap.add_argument("--out", default=None, help="输出 wav（用 ASCII 文件名）")
     ap.add_argument("--style", choices=["bright", "quiet"], default="bright",
                     help="bright = v3（默认）；quiet = 转调 legacy v2，不推荐")
     ap.add_argument("--preset", choices=list(PRESETS), default="default")
-    ap.add_argument("--instrument", choices=["synth", "guitar"], default=None,
-                    help="synth = v3 合成拨弦；guitar = 木吉他（acoustic 预设默认）")
     ap.add_argument("--key", default=None, help=f"调：{'/'.join(KEY_OFFSET)}")
     ap.add_argument("--bpm", type=float, default=None, help="建议 88–112")
     ap.add_argument("--density", type=float, default=None, help="0–1，越小越稀")
     ap.add_argument("--reverb", type=float, default=None, help="0–1")
-    ap.add_argument("--bell", action=argparse.BooleanOptionalAction, default=None,
-                    help="钟琴小旋律（仅 synth）")
+    ap.add_argument("--bell", action=argparse.BooleanOptionalAction, default=None, help="钟琴小旋律")
     ap.add_argument("--shaker", action=argparse.BooleanOptionalAction, default=None, help="沙锤")
-    ap.add_argument("--strum", action=argparse.BooleanOptionalAction, default=None,
-                    help="B 段轻扫弦（仅 guitar；--no-strum = 全程指弹）")
     ap.add_argument("--print-chords", action="store_true",
                     help="只作曲 + 自检，打印和弦表 JSON（MIDI 整数）后退出，不渲染")
     ap.add_argument("--version", action="version", version=VERSION)
@@ -673,8 +417,6 @@ def main():
         if getattr(a, k) is None:
             setattr(a, k, v)
     a.key = a.key.upper()
-    if a.seed < 0:
-        sys.exit("gen_bgm.py: --seed 必须 ≥ 0")
     if a.key not in KEY_OFFSET:
         sys.exit(f"gen_bgm.py: 不支持的调 {a.key}（可用 {'/'.join(KEY_OFFSET)}）")
     if a.dur <= 0:
@@ -685,18 +427,13 @@ def main():
         sys.exit("gen_bgm.py: --density / --reverb 应在 0–1 之间")
 
     t0 = time.time()
-    if a.instrument == "guitar":
-        if a.bell:
-            print("gen_bgm.py: 提示：木吉他模式不用钟琴，已忽略 --bell。", file=sys.stderr)
-        song = compose_guitar(a.seed, a.key, a.bpm, a.dur, a.density, a.strum, a.shaker)
-    else:
-        song = compose(a.seed, a.key, a.bpm, a.dur, a.density, a.bell, a.shaker)
+    song = compose(a.seed, a.key, a.bpm, a.dur, a.density, a.bell, a.shaker)
     n_checked = check_song(song)
 
     if a.print_chords:
         print(json.dumps({
-            "version": VERSION, "seed": a.seed, "preset": a.preset, "instrument": a.instrument,
-            "key": a.key, "tonic_midi": song["T"], "bpm": a.bpm, "bar_sec": round(song["bar"], 4),
+            "version": VERSION, "seed": a.seed, "preset": a.preset, "key": a.key,
+            "tonic_midi": song["T"], "bpm": a.bpm, "bar_sec": round(song["bar"], 4),
             "n_bars": song["n_bars"], "roles": song["roles"], "bars": song["bars"],
             "notes_checked": n_checked, "scale_ok": True,
         }, ensure_ascii=False))
@@ -710,11 +447,9 @@ def main():
     if os.path.getsize(out) == 0:
         sys.exit(f"gen_bgm.py: 输出为空 {out}")
     sec = len(L) / SR
-    extra = (f"strum={'on' if a.strum else 'off'}" if a.instrument == "guitar"
-             else f"bell={'on' if a.bell else 'off'}")
-    print(f"wrote {out}  {sec:.1f}s  v{VERSION} preset={a.preset} instrument={a.instrument} "
-          f"seed={a.seed} key={a.key} bpm={a.bpm:g} density={a.density:g} reverb={a.reverb:g} "
-          f"{extra} shaker={'on' if a.shaker else 'off'}  "
+    print(f"wrote {out}  {sec:.1f}s  v{VERSION} preset={a.preset} seed={a.seed} key={a.key} "
+          f"bpm={a.bpm:g} density={a.density:g} reverb={a.reverb:g} "
+          f"bell={'on' if a.bell else 'off'} shaker={'on' if a.shaker else 'off'}  "
           f"bars={song['n_bars']} notes={n_checked}  render {time.time() - t0:.1f}s")
 
 

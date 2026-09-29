@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v2.3.0 (2026-09-29)
+- 撤回 Karplus-Strong 合成的 acoustic 预设（用户试听判定不可用）。scripts/gen_bgm.py 恢复为 457e704（v3.0.0）原文件，default/plain/lively 输出不变。
+- 新增 scripts/gen_bgm_guitar.py v1.0.0：程序作曲 → MIDI → fluidsynth + FluidR3_GM 采样渲染。
+  - D 调开放和弦，Travis 指弹/轻扫交替，每 8 小节"喘口气"，结尾 A→D。
+  - 自检：无小三度，含大三度或 sus4，全部音在调内。
+  - 选项：--pattern、--guitar、--print-chords、--midi-out。
+- 新依赖：fluidsynth 2.x、FluidR3_GM.sf2（MIT，不入库，PVC_SF2 指定），见 references/third-party.md。
+- 文档同步：preferences.md、testing.md、SKILL.md §5、README.md、ffmpeg-recipes.md。
+- 待用户：试听 guitar-mix/finger/nylon，并在 preferences.md 填"当前默认"。
+- gen_bgm_guitar.py：--sf2 显式指定时不再回退到 PVC_SF2/默认路径（回归 h 发现）。
 ## v2.2.0（2026-09-29）
 
 新增第四个 BGM 预设 `acoustic`（木吉他）。gen_bgm.py 升到 v3.1.0。

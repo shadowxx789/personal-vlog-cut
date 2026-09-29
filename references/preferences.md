@@ -62,9 +62,14 @@
   带泛音的拨弦 + 短贝斯，不做整轨低通；每 4 小节换织体，中间有「喘口气」段。
 - 预设：`default`（加稀疏钟琴和很轻的沙锤）/ `plain`（只有吉他和贝斯，稀一点）/ `lively`（E 调 108 BPM）。
   他挑定的预设写在这里：**当前默认 = ＿＿＿＿（待他试听后填）**。
-- 第四个预设 `acoustic`：**木吉他**（Karplus-Strong 物理弦模型 + 木箱共鸣，真实开放和弦把位 D/G/A）。
-  A 段 Travis 指弹（拇指交替低音），B 段轻扫弦，喘口气段只拨两三下；96 BPM、不带钟琴。
-  `--no-strum` = 全程指弹（更安静，口播多的片子优先）。他说过喜欢木吉他的声音。
+- 木吉他（采样版）：`scripts/gen_bgm_guitar.py`，用 FluidR3_GM 的 Steel Guitar（GM 25）经 fluidsynth 渲染，是真实采样音色，不是合成。
+  - 和弦：D 调开放和弦（D、D/F#、Dmaj7、D6、G、G/B、Gadd9、A、A/C#、Asus4），`--key` 相当于变调夹整体移调。约束与合成器版相同：无小三度，全部音在大调音阶内。
+  - 默认 `--pattern mix`：每 8 小节在 Travis 指弹与轻扫（下·下上·上下上）之间切换；每段第 8 小节"喘口气"，只慢拨一次；结尾 A→D 慢拨收尾；96 BPM。
+  - 人味化：±15ms 时值偏差、力度抖动、扫弦逐弦错开。
+  - 变体：`--pattern finger`（全程指弹，最安静）、`--guitar nylon`（尼龙弦，更柔）。
+- 候选：合成器版 default / plain / lively；木吉他 guitar-mix / guitar-finger / guitar-nylon。当前默认 = ___（试听后填）
+- 木吉他的中频比合成器版更满。混音时如果压旁白，先试 `--pattern finger` 或 `--density 0.7`，仍不够再考虑把 mix_bgm.sh 的 BGM 音量降 2 dB。
+- 不要：物理建模合成的木吉他（v2.2.0 的 acoustic 预设，试听判定不可用，已撤回，详见 CHANGELOG）。
 - 仍然不要：小调、0.5s 一遍的重复 ostinato、「呜呜」长垫（厚低音正弦 + IIR）。
 - v2 长垫乐被评价为**阴郁**，已移到 `scripts/legacy/`；`--style quiet` 只在他明确要安静到发闷时用。
 - 拨弦在中频，会和人声抢：口播段听着打架时，先 `--density 0.7` 或换 `plain`，再考虑压音量。

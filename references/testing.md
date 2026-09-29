@@ -34,10 +34,26 @@
 - `--dur 180` 渲染耗时 ≤ 10s。
 - 负例：把 `scripts/legacy/gen_bgm_v2.py` 临时改名后，`--style quiet` 必须非零退出；测完改回。
 - 正例：`--style quiet --seed 1 --dur 20` 能出 wav（legacy 转调可用）。
-- **旧预设不变**：改 gen_bgm.py 之前，先用旧版生成 seed 1 / dur 60 的 default、plain、lively 并记下 md5；
-  改完后三者必须逐字节相同（木吉他是独立代码路径，不许影响 synth 输出）。
-- acoustic：同 seed md5 相同、换 seed 不同；`--print-chords` 过外部断言；seed 1/2/3 都过自检；
-  `--no-strum`、`--key E` 各跑一次；`--dur 180` 渲染 ≤ 10s。
+
+## gen_bgm_guitar.py 验证点
+工作目录 /tmp/pvc-test/，G=scripts/gen_bgm_guitar.py
+
+a. 依赖：`fluidsynth --version` 有输出；`$PVC_SF2` 存在；记录 sha256，并与 references/third-party.md 一致。
+b. 作曲可复现：`--seed 1 --dur 60 --print-chords` 连跑两次，diff 为空；`--seed 2` 的输出与 seed 1 不同。
+c. 自检矩阵：seed 1–5 × pattern mix/finger/strum × key C/D/G，共 45 次 `--print-chords`，全部退出码 0。
+d. MIDI 可复现：`--seed 7 --dur 60 --print-chords --midi-out x.mid` 连跑两次，MD5 相同。另外完整渲染两次，WAV 的 MD5 是否相同仅作参考记录，不计 FAIL。
+e. 性能：`--seed 1 --dur 180 --out long.wav` 耗时 ≤ 15 s，记录实际秒数；stderr 中不得出现"削波"WARN。
+f. 规格（针对 long.wav）：
+   - ffprobe 显示 48000 Hz、2 声道、s16，时长 180.000 s（±1 采样）。
+   - `ffmpeg -i long.wav -af volumedetect -f null -` 的 max_volume 在 -3.5 到 -2.5 dB 之间。
+   - `ffmpeg -sseof -0.3 -i long.wav -af volumedetect -f null -` 的 max_volume < -25 dB。
+g. 旧预设不变：
+   - 先运行 `git show 457e704:scripts/gen_bgm.py > ref.py`。
+   - ref.py 与 scripts/gen_bgm.py 分别生成 default/plain/lively（seed 1，dur 60），三对 MD5 必须完全相同。
+h. 负例（各自退出码必须为 2，并有明确报错）：`--sf2 /nonexistent.sf2`、`--fluidsynth /nonexistent`、`--dur 5`。
+i. 仓库卫生：
+   - `git ls-files | grep -i '\.sf2$'` 为空。
+   - 在 CHANGELOG.md 以外 grep `Karplus`，结果为空。
 
 ## 链路验证点
 
@@ -51,7 +67,10 @@
 - `1100k`、`zoompan`、`STHeiti`：只允许「禁止/作废」语境出现。
 
 ## 试听件
-
-同一个当天新 seed，60s。比较音色时出 `--preset default` / `plain` / `lively` / `acoustic`；
-只调木吉他时出 `acoustic` 和 `acoustic --no-strum`。文件名用脚本默认的 `bgm_<preset>_s<seed>.wav`（ASCII），
-`MEDIA:` 发上来，不要自己选。
+- seed 用当天日期，各 60 s，文件名只用 ASCII，通过 MEDIA: 发给用户。
+- 木吉他：
+  - bgm_guitar_mix_s<seed>.wav（默认）
+  - bgm_guitar_finger_s<seed>.wav（`--pattern finger`）
+  - bgm_guitar_nylon_s<seed>.wav（`--guitar nylon`）
+- 合成器版（default/plain/lively）已在 v2.1.0 试听过，除非用户要求，不重复生成。
+- 默认值由用户试听后决定，agent 不做选择。
