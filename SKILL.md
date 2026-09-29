@@ -1,7 +1,7 @@
 ---
 name: personal-vlog-cut
 description: "剪 用户 的个人爬山/旅行/明信片 vlog（ffmpeg 或 ChatCut Desktop）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。Use for personal hike/travel vlog cutting."
-version: 2.4.0
+version: 2.4.1
 ---
 
 # Personal vlog cut
@@ -51,7 +51,7 @@ version: 2.4.0
 | 脚本 | 干什么 |
 |---|---|
 | `scripts/gen_bgm.py` | 生成垫乐 v3（指弹风；`--seed` 必填，`--preset default\|plain\|lively`；内置小三度和音阶自检；`--style quiet` 转调 legacy v2，不推荐） |
-| `scripts/gen_bgm_guitar.py` | 木吉他 BGM（FluidR3_GM 采样 + fluidsynth）：开放和弦，指弹/轻扫交替；`--pattern mix\|finger\|strum\|sparse`、`--guitar steel\|nylon`、`--key`、`--bpm`（默认 96）、`--density`、`--print-chords`、`--midi-out`；需要 fluidsynth 和 `$PVC_SF2` |
+| `scripts/gen_bgm_guitar.py` | 木吉他 BGM（FluidR3_GM 采样 + fluidsynth）：生成按 [references/preferences.md](references/preferences.md)「当前默认」的命令，安静场景用备选；开放和弦，指弹/轻扫交替；`--pattern mix\|finger\|strum\|sparse`、`--guitar steel\|nylon`、`--key`、`--bpm`（默认 96）、`--density`、`--print-chords`、`--midi-out`；需要 fluidsynth 和 `$PVC_SF2` |
 | `scripts/pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4（横摇锁 y 只移 x / 竖摇从下往上；**禁 zoompan**） |
 | `scripts/mix_bgm.sh` | 原声 + 垫乐 sidechain + `alimiter`，输出 `vN_bgm.mp4` 归档母版 |
 | `scripts/mute_segment.sh` | 单切静音（`apad` 到视频时长，音画差 ≤1 帧） |

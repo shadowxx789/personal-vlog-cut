@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## v2.4.1 (2026-09-29)
+- 用户试听选定：默认 BGM = 木吉他尼龙弦 sparse（88 BPM）；安静场景备选 = sparse 80 BPM / density 0.6 / reverb 0.5。
+- 纯文档改动：preferences.md、SKILL.md 流程措辞、ffmpeg-recipes.md、版本号。代码未动。
 ## v2.4.0 (2026-09-29)
 - gen_bgm_guitar.py v1.1.0：新增 --pattern sparse（稀疏指弹，每小节 2–5 个音）。mix/finger/strum 输出不变（回归 j）。
 - 起因：用户试听 v2.3.0，尼龙弦最好，但太密、太热闹。
