@@ -1,6 +1,6 @@
 # personal-vlog-cut
 
-> 剪个人爬山 / 旅行 / 明信片 vlog 的 agent skill（v2.4.1）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。
+> 剪个人爬山 / 旅行 / 明信片 vlog 的 agent skill（v2.4.2）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。
 >
 > **本仓库是脱敏公开版**：执行规则与本地使用版完全一致，仅地名与家人称谓做了泛化；带真实案例的踩坑实录留在本地，不公开。
 
@@ -21,14 +21,14 @@
 - `SKILL.md` — 流程总览与最高频默认值（入口）
 - `CHANGELOG.md` — 版本记录、冲突裁决（C1–C5）、规则映射核对表
 - `references/` — 分主题细则：审美偏好 / 先讲分析 / 素材来源 / 调色判定 / ffmpeg 配方 / ChatCut / 重剪 / 交付 / 借感觉 / 回归验证
-- `scripts/` — 六个可执行脚本（见下）
+- `scripts/` — 七个可执行脚本（见下）
 
 ## 脚本
 
 | 脚本 | 用途 |
 |---|---|
+| `gen_bgm_guitar.py` | 木吉他 BGM，SoundFont 采样渲染（依赖 fluidsynth 与 FluidR3_GM.sf2，音色文件不在仓库内，见 references/third-party.md）；**当前默认 BGM** |
 | `gen_bgm.py` | 生成原创垫乐 v3：`--seed` 必填（同 seed 可复现）；`--preset default\|plain\|lively`（合成指弹风）；只用大调/挂留和弦，内置音阶自检；旧 v2 在 `scripts/legacy/` |
-| `scripts/gen_bgm_guitar.py` | 木吉他 BGM，SoundFont 采样渲染（依赖 fluidsynth 与 FluidR3_GM.sf2，音色文件不在仓库内，见 references/third-party.md） |
 | `pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4：横摇锁 y 只移 x、竖摇从下往上、EXIF 方向校正、余量不足自动退 static |
 | `mix_bgm.sh` | 原声 + 垫乐 sidechain 混音（末尾 `alimiter` 防削波），输出归档母版 `vN_bgm.mp4` |
 | `mute_segment.sh` | 单切静音：`apad` 到视频时长，音画时长差 ≤ 1 帧 |
@@ -41,6 +41,7 @@
 
 - `ffmpeg` / `ffprobe`
 - Python 3 + numpy（`gen_bgm.py`，优先用带 numpy 的解释器，找不到会报错）
+- fluidsynth 2.x + FluidR3_GM.sf2（MIT，约 141MB，不入库；用环境变量 PVC_SF2 指定路径，见 references/third-party.md）——`gen_bgm_guitar.py` 需要
 - Pillow（`pan_still.sh` 的 EXIF 校正；没有也能跑，脚本会尝试 `uv run --with pillow`）
 - macOS 手札字体 `Hannotate.ttc`（烧字幕用；找不到会报错停下，**不回退黑体**）
 

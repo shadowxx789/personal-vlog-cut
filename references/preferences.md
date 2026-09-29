@@ -58,27 +58,26 @@
 ## BGM 口味
 
 - 「配一点安静背景音乐」= **垫在现场声下面**，不是换声轨。原声保留；照片段是静音、乐更清楚是预期。
-- 默认 **v3 指弹风**（`scripts/gen_bgm.py`）：大调、每小节换一个和弦（约 100 BPM）、中高音区、
+- 合成器版 **v3 指弹风**（`scripts/gen_bgm.py`，**已不是默认**）：大调、每小节换一个和弦（约 100 BPM）、中高音区、
   带泛音的拨弦 + 短贝斯，不做整轨低通；每 4 小节换织体，中间有「喘口气」段。
 - 预设：`default`（加稀疏钟琴和很轻的沙锤）/ `plain`（只有吉他和贝斯，稀一点）/ `lively`（E 调 108 BPM）。
 - 木吉他（采样版）：`scripts/gen_bgm_guitar.py`，用 FluidR3_GM 的 Steel Guitar（GM 25）经 fluidsynth 渲染，是真实采样音色，不是合成。
   - 和弦：D 调开放和弦（D、D/F#、Dmaj7、D6、G、G/B、Gadd9、A、A/C#、Asus4），`--key` 相当于变调夹整体移调。约束与合成器版相同：无小三度，全部音在大调音阶内。
-  - 默认 `--pattern mix`：每 8 小节在 Travis 指弹与轻扫（下·下上·上下上）之间切换；每段第 8 小节"喘口气"，只慢拨一次；结尾 A→D 慢拨收尾；96 BPM。
+  - 脚本自带默认 `--pattern mix`（不是用户选定方案）：每 8 小节在 Travis 指弹与轻扫（下·下上·上下上）之间切换；每段第 8 小节"喘口气"，只慢拨一次；结尾 A→D 慢拨收尾；96 BPM。
   - 人味化：±15ms 时值偏差、力度抖动、扫弦逐弦错开。
-  - 变体：`--pattern finger`（全程指弹，最安静）、`--guitar nylon`（尼龙弦，更柔）、--pattern sparse（稀疏指弹，每小节 2–5 个音，余音延续；配 --guitar nylon 使用）。
+  - 变体：`--pattern finger`（全程指弹，最安静）、`--guitar nylon`（尼龙弦，更柔）、`--pattern sparse`（稀疏指弹，每小节 2–5 个音，余音延续；配 --guitar nylon 使用）。
 - 当前默认 = 木吉他尼龙弦稀疏（v2.4.0 试听选定）：
   - 默认：`python scripts/gen_bgm_guitar.py --seed <日期> --dur <成片秒数+2> --guitar nylon --pattern sparse --bpm 88 --out bgm.wav`
   - 备选（安静）：`python scripts/gen_bgm_guitar.py --seed <日期> --dur <成片秒数+2> --guitar nylon --pattern sparse --bpm 80 --density 0.6 --reverb 0.5 --out bgm.wav`
   - 什么时候用备选：旁白占成片一半以上、夜景、风景空镜为主，或者用户说"安静点"。其余情况一律用默认。
   - 这两条命令的参数必须写全，不要依赖脚本的默认值（脚本默认值是 steel/mix，不是用户选定的方案）。
-- 木吉他的中频比合成器版更满。混音时如果压旁白，先试 `--pattern finger` 或 `--density 0.7`，仍不够再考虑把 mix_bgm.sh 的 BGM 音量降 2 dB。
+- 抢旁白时：先换「当前默认」里的备选命令；仍不够，再把 mix_bgm.sh 的 BGM 音量降 2 dB。不要换 finger（比 sparse 密），也不要换回合成器 plain。
 - 不要：物理建模合成的木吉他（v2.2.0 的 acoustic 预设，试听判定不可用，已撤回，详见 CHANGELOG）。
 - 用户反馈（v2.3.0 试听）：尼龙弦最好，但 mix 太密、太热闹 → 往稀疏方向调。
 - 用户反馈（v2.4.0 试听）：sparse 和 sparse_slow 都满意；finger_lite 仍偏密。合成器版 default/plain/lively 保留，但不再作为默认。
 - 仍然不要：小调、0.5s 一遍的重复 ostinato、「呜呜」长垫（厚低音正弦 + IIR）。
 - v2 长垫乐被评价为**阴郁**，已移到 `scripts/legacy/`；`--style quiet` 只在他明确要安静到发闷时用。
-- 拨弦在中频，会和人声抢：口播段听着打架时，先 `--density 0.7` 或换 `plain`，再考虑压音量。
 - 垫乐默认 `volume` **0.72**，不是 0.92；他说太大也不停在 0.55。整段床约 **−12dB**，口播镜那几段降到约 **−22dB**（只降全局一档他仍会说被盖住）。
 - 开头淡入约 2.6s，结尾跟片长淡出约 4.3s。
-- 用原创或明确可用的器乐，**不拆商业曲**。**每天换 seed 和调**，不复用上一趟的 wav。
-- 生成与混音见 [ffmpeg-recipes.md](ffmpeg-recipes.md)「垫乐」，脚本 `scripts/gen_bgm.py`、`scripts/mix_bgm.sh`。
+- 用原创或明确可用的器乐，**不拆商业曲**。**每天换 seed**，不复用上一趟的 wav；调固定 D（用户试听选定的就是 D，换调要另出试听件）。
+- 生成与混音见 [ffmpeg-recipes.md](ffmpeg-recipes.md)「垫乐」，脚本 `scripts/gen_bgm_guitar.py`（默认）、`scripts/mix_bgm.sh`；合成器版 `scripts/gen_bgm.py` 备用。

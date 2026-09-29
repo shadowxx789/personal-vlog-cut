@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v2.4.2 (2026-09-29)
+- 文档一致性清理：默认 BGM 已改为木吉他，合成器 v3 在 preferences/SKILL/ffmpeg-recipes/README 中统一标为"备用，非默认"。
+- 修正抢旁白时的补救顺序：先换备选命令，再降 2 dB（原先建议换 finger/plain，与稀疏方向相反）。
+- 换调规则：每天只换 seed，调固定 D（用户选定；换调需另出试听件）。
+- SKILL.md 的默认命令指引从 §5 脚本表移到 §2 默认偏好。
+- README：脚本数改为 7，补上 fluidsynth/sf2 依赖。
 ## v2.4.1 (2026-09-29)
 - 用户试听选定：默认 BGM = 木吉他尼龙弦 sparse（88 BPM）；安静场景备选 = sparse 80 BPM / density 0.6 / reverb 0.5。
 - 纯文档改动：preferences.md、SKILL.md 流程措辞、ffmpeg-recipes.md、版本号。代码未动。

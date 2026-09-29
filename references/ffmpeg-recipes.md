@@ -90,8 +90,8 @@ ffmpeg -i CUT.mp4 -loop 1 -i overlay_open.png -loop 1 -i overlay_end.png \
 
 ## 垫乐
 
-- 生成：`scripts/gen_bgm.py`（`--seed N --dur 秒 [--preset default|plain|lively]`；大调、每小节一和弦、内置音阶自检）。不拆商业曲，每天换 seed。旧 v2 在 `scripts/legacy/`，不再默认使用。
-- 木吉他：`python scripts/gen_bgm_guitar.py --seed <日期> --dur <成片秒数+2> --out bgm.wav`。输出与合成器版规格相同（48k/16bit/立体声/峰值约 -3 dBFS），可直接交给 mix_bgm.sh，混音链不变。（实际参数以 preferences.md"当前默认"为准）
+- 生成（默认）：`scripts/gen_bgm_guitar.py`，命令和参数只看 [preferences.md](preferences.md)「当前默认」，这里不抄命令。输出为 48k/16bit/立体声、峰值约 -3 dBFS，直接交给 mix_bgm.sh。
+- 合成器版（备用）：`scripts/gen_bgm.py`（`--seed N --dur 秒 [--preset default|plain|lively]`；大调、每小节一和弦、内置音阶自检）。不拆商业曲，每天换 seed。旧 v2 在 `scripts/legacy/`，不再默认使用。
 - 混音：`scripts/mix_bgm.sh`（原声 ×1.18、BGM highpass 140/lowpass 10000 ×0.72、淡入 2.6s/淡出 4.3s、sidechain、末尾 `alimiter=limit=0.95`）。只从**没垫过**的 `vN.mp4` 混，输出 `vN_bgm.mp4` 归档母版。
 - BGM 比片长短：`acrossfade` 接同一条，**禁止 `apad` 补静音**：
 
