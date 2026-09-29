@@ -34,6 +34,10 @@
 - `--dur 180` 渲染耗时 ≤ 10s。
 - 负例：把 `scripts/legacy/gen_bgm_v2.py` 临时改名后，`--style quiet` 必须非零退出；测完改回。
 - 正例：`--style quiet --seed 1 --dur 20` 能出 wav（legacy 转调可用）。
+- **旧预设不变**：改 gen_bgm.py 之前，先用旧版生成 seed 1 / dur 60 的 default、plain、lively 并记下 md5；
+  改完后三者必须逐字节相同（木吉他是独立代码路径，不许影响 synth 输出）。
+- acoustic：同 seed md5 相同、换 seed 不同；`--print-chords` 过外部断言；seed 1/2/3 都过自检；
+  `--no-strum`、`--key E` 各跑一次；`--dur 180` 渲染 ≤ 10s。
 
 ## 链路验证点
 
@@ -48,5 +52,6 @@
 
 ## 试听件
 
-同一个当天新 seed，60s，出 3 版：`--preset default` / `plain` / `lively`，
-文件名 `bgm_<preset>_s<seed>.wav`（脚本默认就是 ASCII），`MEDIA:` 发上来，不要自己选。
+同一个当天新 seed，60s。比较音色时出 `--preset default` / `plain` / `lively` / `acoustic`；
+只调木吉他时出 `acoustic` 和 `acoustic --no-strum`。文件名用脚本默认的 `bgm_<preset>_s<seed>.wav`（ASCII），
+`MEDIA:` 发上来，不要自己选。

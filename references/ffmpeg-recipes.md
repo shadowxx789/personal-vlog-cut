@@ -90,7 +90,7 @@ ffmpeg -i CUT.mp4 -loop 1 -i overlay_open.png -loop 1 -i overlay_end.png \
 
 ## 垫乐
 
-- 生成：`scripts/gen_bgm.py`（`--seed N --dur 秒 [--preset default|plain|lively]`；v3 指弹风，大调、每小节一和弦、无整轨低通、内置音阶自检）。不拆商业曲，每天换 seed。旧 v2 在 `scripts/legacy/`，不再默认使用。
+- 生成：`scripts/gen_bgm.py`（`--seed N --dur 秒 [--preset default|plain|lively|acoustic]`；acoustic 为木吉他，`--no-strum` 全程指弹；大调、每小节一和弦、内置音阶自检）。不拆商业曲，每天换 seed。旧 v2 在 `scripts/legacy/`，不再默认使用。
 - 混音：`scripts/mix_bgm.sh`（原声 ×1.18、BGM highpass 140/lowpass 10000 ×0.72、淡入 2.6s/淡出 4.3s、sidechain、末尾 `alimiter=limit=0.95`）。只从**没垫过**的 `vN.mp4` 混，输出 `vN_bgm.mp4` 归档母版。
 - BGM 比片长短：`acrossfade` 接同一条，**禁止 `apad` 补静音**：
 

@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v2.2.0（2026-09-29）
+
+新增第四个 BGM 预设 `acoustic`（木吉他）。gen_bgm.py 升到 v3.1.0。
+
+- 音色：Karplus-Strong 物理弦模型（噪声+三角激励、拨弦位置梳状滤波、频率相关衰减、±2 音分微走音）+ 木箱共鸣（约 100/200/400/600/1050Hz 共鸣峰，左右略不同）。
+- 演奏：真实开放和弦把位（D、D6、G、Gadd9、A、Asus4，按 capo 思路移调）；A 段 Travis 指弹，B 段轻扫弦（下 · 下上 · 上下上），喘口气段捏弦后让它响；每根弦同一时间只响一个音，同弦再拨或换和弦就闷掉。
+- 新参数：`--instrument synth|guitar`、`--strum/--no-strum`；`--seed` 要求 ≥ 0。
+- **default / plain / lively 输出与 v3.0.0 逐字节相同**（回归已比对 md5）。
+- 文档同步：preferences.md、testing.md、SKILL.md（§5 + version）、README.md（清掉 v2 描述）、ffmpeg-recipes.md。
+
+### 待 用户 决定
+- 默认预设：在 default / plain / lively / acoustic 中选定。
 ## v2.1.0（2026-09-29）
 
 BGM 生成器换成 v3（指弹拨弦 + 短贝斯 + 稀疏钟琴 + 很轻的沙锤 + 小房间混响）。v2 原样移到 `scripts/legacy/gen_bgm_v2.py`，只供 `--style quiet` 转调使用。

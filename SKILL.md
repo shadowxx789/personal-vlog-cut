@@ -1,7 +1,7 @@
 ---
 name: personal-vlog-cut
 description: "剪 用户 的个人爬山/旅行/明信片 vlog（ffmpeg 或 ChatCut Desktop）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。Use for personal hike/travel vlog cutting."
-version: 2.0.0
+version: 2.2.0
 ---
 
 # Personal vlog cut
@@ -50,7 +50,7 @@ version: 2.0.0
 
 | 脚本 | 干什么 |
 |---|---|
-| `scripts/gen_bgm.py` | 生成垫乐 v3（指弹风；`--seed` 必填，`--preset default\|plain\|lively`；内置小三度和音阶自检；`--style quiet` 转调 legacy v2，不推荐） |
+| `scripts/gen_bgm.py` | 生成垫乐 v3.1（`--seed` 必填；`--preset default\|plain\|lively\|acoustic`，acoustic = 木吉他指弹 + 轻扫弦，`--no-strum` 纯指弹；内置小三度和音阶自检；`--style quiet` 转调 legacy v2，不推荐） |
 | `scripts/pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4（横摇锁 y 只移 x / 竖摇从下往上；**禁 zoompan**） |
 | `scripts/mix_bgm.sh` | 原声 + 垫乐 sidechain + `alimiter`，输出 `vN_bgm.mp4` 归档母版 |
 | `scripts/mute_segment.sh` | 单切静音（`apad` 到视频时长，音画差 ≤1 帧） |
