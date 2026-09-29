@@ -66,10 +66,11 @@
   - 和弦：D 调开放和弦（D、D/F#、Dmaj7、D6、G、G/B、Gadd9、A、A/C#、Asus4），`--key` 相当于变调夹整体移调。约束与合成器版相同：无小三度，全部音在大调音阶内。
   - 默认 `--pattern mix`：每 8 小节在 Travis 指弹与轻扫（下·下上·上下上）之间切换；每段第 8 小节"喘口气"，只慢拨一次；结尾 A→D 慢拨收尾；96 BPM。
   - 人味化：±15ms 时值偏差、力度抖动、扫弦逐弦错开。
-  - 变体：`--pattern finger`（全程指弹，最安静）、`--guitar nylon`（尼龙弦，更柔）。
+  - 变体：`--pattern finger`（全程指弹，最安静）、`--guitar nylon`（尼龙弦，更柔）、--pattern sparse（稀疏指弹，每小节 2–5 个音，余音延续；配 --guitar nylon 使用）。
 - 候选：合成器版 default / plain / lively；木吉他 guitar-mix / guitar-finger / guitar-nylon。当前默认 = ___（试听后填）
 - 木吉他的中频比合成器版更满。混音时如果压旁白，先试 `--pattern finger` 或 `--density 0.7`，仍不够再考虑把 mix_bgm.sh 的 BGM 音量降 2 dB。
 - 不要：物理建模合成的木吉他（v2.2.0 的 acoustic 预设，试听判定不可用，已撤回，详见 CHANGELOG）。
+- 用户反馈（v2.3.0 试听）：尼龙弦最好，但 mix 太密、太热闹 → 往稀疏方向调。
 - 仍然不要：小调、0.5s 一遍的重复 ostinato、「呜呜」长垫（厚低音正弦 + IIR）。
 - v2 长垫乐被评价为**阴郁**，已移到 `scripts/legacy/`；`--style quiet` 只在他明确要安静到发闷时用。
 - 拨弦在中频，会和人声抢：口播段听着打架时，先 `--density 0.7` 或换 `plain`，再考虑压音量。

@@ -40,7 +40,7 @@
 
 a. 依赖：`fluidsynth --version` 有输出；`$PVC_SF2` 存在；记录 sha256，并与 references/third-party.md 一致。
 b. 作曲可复现：`--seed 1 --dur 60 --print-chords` 连跑两次，diff 为空；`--seed 2` 的输出与 seed 1 不同。
-c. 自检矩阵：seed 1–5 × pattern mix/finger/strum × key C/D/G，共 45 次 `--print-chords`，全部退出码 0。
+c. 自检矩阵：seed 1–5 × pattern mix/finger/strum/sparse × key C/D/G，共 60 次 `--print-chords`，全部退出码 0。
 d. MIDI 可复现：`--seed 7 --dur 60 --print-chords --midi-out x.mid` 连跑两次，MD5 相同。另外完整渲染两次，WAV 的 MD5 是否相同仅作参考记录，不计 FAIL。
 e. 性能：`--seed 1 --dur 180 --out long.wav` 耗时 ≤ 15 s，记录实际秒数；stderr 中不得出现"削波"WARN。
 f. 规格（针对 long.wav）：
@@ -54,6 +54,7 @@ h. 负例（各自退出码必须为 2，并有明确报错）：`--sf2 /nonexis
 i. 仓库卫生：
    - `git ls-files | grep -i '\.sf2$'` 为空。
    - 在 CHANGELOG.md 以外 grep `Karplus`，结果为空。
+j. 旧 pattern 不变：用 `git show a624a61:scripts/gen_bgm_guitar.py > ref_g.py`（BASE），对 mix/finger/strum 各跑 `--seed 7 --dur 60 --print-chords --midi-out`，新旧两边的 MIDI MD5 必须完全相同。
 
 ## 链路验证点
 
@@ -69,8 +70,8 @@ i. 仓库卫生：
 ## 试听件
 - seed 用当天日期，各 60 s，文件名只用 ASCII，通过 MEDIA: 发给用户。
 - 木吉他：
-  - bgm_guitar_mix_s<seed>.wav（默认）
-  - bgm_guitar_finger_s<seed>.wav（`--pattern finger`）
-  - bgm_guitar_nylon_s<seed>.wav（`--guitar nylon`）
+  - bgm_nylon_finger_lite_s<seed>.wav（`--pattern finger` + `--density 0.5` + `--bpm 88`）
+  - bgm_nylon_sparse_s<seed>.wav（`--pattern sparse` + `--bpm 88`）
+  - bgm_nylon_sparse_slow_s<seed>.wav（`--pattern sparse` + `--bpm 80` + `--density 0.6` + `--reverb 0.5`）
 - 合成器版（default/plain/lively）已在 v2.1.0 试听过，除非用户要求，不重复生成。
 - 默认值由用户试听后决定，agent 不做选择。

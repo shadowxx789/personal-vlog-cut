@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_bgm_guitar.py v1.0.0 — 木吉他 BGM：程序作曲 → MIDI → fluidsynth + SoundFont 采样渲染
+gen_bgm_guitar.py v1.1.0 — 木吉他 BGM：程序作曲 → MIDI → fluidsynth + SoundFont 采样渲染
 personal-vlog-cut 专用。与 gen_bgm.py（合成器 v3）完全独立，不影响其输出。
 
 依赖：numpy（仅渲染时）；fluidsynth 2.x；GM SoundFont（默认 FluidR3_GM.sf2，MIT）
@@ -11,6 +11,7 @@ SoundFont：给了 --sf2 就只用它（不存在即报错退出 2）；否则�
   python gen_bgm_guitar.py --seed 1 --dur 60 --out a.wav                  # 默认：指弹/轻扫交替
   python gen_bgm_guitar.py --seed 1 --dur 60 --out a.wav --pattern finger # 全程指弹
   python gen_bgm_guitar.py --seed 1 --dur 60 --out a.wav --guitar nylon   # 尼龙弦
+  python gen_bgm_guitar.py --seed 1 --dur 60 --out a.wav --guitar nylon --pattern sparse --bpm 88  # 稀疏
   python gen_bgm_guitar.py --seed 1 --dur 60 --print-chords               # 只作曲+自检（无需 numpy/fluidsynth）
   python gen_bgm_guitar.py --seed 1 --dur 60 --print-chords --midi-out a.mid
 
@@ -30,7 +31,7 @@ import time
 import wave
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 SR = 48000
 PEAK = 0.70          # ≈ -3.1 dBFS
 PPQ = 480
@@ -114,6 +115,8 @@ def plan_bars(dur, bpm, seed, pattern):
             kind = "breath"
         elif pattern == "finger":
             kind = "finger"
+        elif pattern == "sparse":
+            kind = "sparse"
         elif pattern == "strum":
             kind = "strum"
         else:
@@ -190,6 +193,29 @@ def travis(p, t0, beats, v, root, dens, accent):
             p.play(p.hum(t), *fill[slot], 56)
 
 
+def sparse(p, t0, beats, v, root, dens, accent):
+    """稀疏指弹：每小节 2–5 个音，让余音自然延续"""
+    thumb = [x for x in v if x[0] <= 3]
+    bass = thumb[0]
+    alt = pick_alt(thumb, root)
+    tre = [x for x in v if x[0] >= 3 and x != alt]
+    if len(tre) < 2:
+        tre = v[-2:]
+    e = p.beat / 2
+    for k in range(int(beats * 2)):
+        t = t0 + k * e
+        slot = k % 8
+        if slot == 0:
+            p.play(p.hum(t), *bass, 64 + (6 if accent else 0))
+            p.play(p.hum(t + 0.02), *tre[-1], 54)
+        elif slot == 3 and p.rng.random() < dens:
+            p.play(p.hum(t), *tre[-2], 48)
+        elif slot == 4:
+            p.play(p.hum(t), *alt, 54)
+        elif slot == 6 and p.rng.random() < dens * 0.6:
+            p.play(p.hum(t), *tre[0], 46)
+
+
 def strum(p, t0, beats, v, dens, accent):
     pat = "D.DU.UDU"
     e = p.beat / 2
@@ -235,6 +261,8 @@ def perform(bars, bpm, shift, dens, seed, dur):
             kind = b["kind"]
             if kind == "finger":
                 travis(p, t0, beats, v, root, dens, accent)
+            elif kind == "sparse":
+                sparse(p, t0, beats, v, root, dens, accent)
             elif kind == "strum":
                 strum(p, t0, beats, v, dens, accent)
             elif kind == "breath":
@@ -395,7 +423,7 @@ def main():
     ap.add_argument("--key", default="D", choices=list(KEY_OFFSET), help="相当于变调夹移调")
     ap.add_argument("--bpm", type=float, default=96.0)
     ap.add_argument("--density", type=float, default=0.85, help="高音填充/上扫保留概率 0–1")
-    ap.add_argument("--pattern", default="mix", choices=["mix", "finger", "strum"])
+    ap.add_argument("--pattern", default="mix", choices=["mix", "finger", "strum", "sparse"])
     ap.add_argument("--guitar", default="steel", choices=list(GUITAR_PROGRAM))
     ap.add_argument("--reverb", type=float, default=0.35, help="0–1")
     ap.add_argument("--gain", type=float, default=0.4, help="fluidsynth 增益（最终会归一化）")

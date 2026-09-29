@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v2.4.0 (2026-09-29)
+- gen_bgm_guitar.py v1.1.0：新增 --pattern sparse（稀疏指弹，每小节 2–5 个音）。mix/finger/strum 输出不变（回归 j）。
+- 起因：用户试听 v2.3.0，尼龙弦最好，但太密、太热闹。
+- 待用户：试听三个尼龙弦稀疏候选，并在 preferences.md 填"当前默认"。
 ## v2.3.0 (2026-09-29)
 - 撤回 Karplus-Strong 合成的 acoustic 预设（用户试听判定不可用）。scripts/gen_bgm.py 恢复为 457e704（v3.0.0）原文件，default/plain/lively 输出不变。
 - 新增 scripts/gen_bgm_guitar.py v1.0.0：程序作曲 → MIDI → fluidsynth + FluidR3_GM 采样渲染。
