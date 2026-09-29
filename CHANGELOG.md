@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v2.5.0 (2026-09-29)
+- pan_still.sh：静帧输入补 -framerate 30（原 25fps 读图、30fps 输出，每 5 帧重复 1 帧，平移会顿）；static 默认改为 cover（原 contain 会加黑边），新增 --fit cover|contain。
+- export_discord.sh：单遍 ABR → two-pass；超 10MB 自动 ×0.9 降码率重试，最多 2 次，仍超限则报错退出；新增测试用环境变量 PVC_DISCORD_LIMIT_BYTES。
+- mix_bgm.sh：alimiter 0.95 → 0.89（≈−1 dBFS，给 AAC 峰值回弹留余量）。只影响瞬时峰值，不改变音色和响度，用户同意不出 A/B（"有问题可以音量小一点"）。
+- 跨平台：stat -f %z → wc -c。
+- 文档同步：testing.md（v2.5.0 验证点）、ffmpeg-recipes.md、preferences.md、SKILL.md §5、README。
 ## v2.4.2 (2026-09-29)
 - 文档一致性清理：默认 BGM 已改为木吉他，合成器 v3 在 preferences/SKILL/ffmpeg-recipes/README 中统一标为"备用，非默认"。
 - 修正抢旁白时的补救顺序：先换备选命令，再降 2 dB（原先建议换 finger/plain，与稀疏方向相反）。

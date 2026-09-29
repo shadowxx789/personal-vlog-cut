@@ -10,7 +10,7 @@ usage() {
   原声 volume=1.18；BGM highpass=140 / lowpass=10000 / volume=0.72 /
   淡入 2.6s / 淡出 4.3s（FADE_START=片长−4.5 自动算）；
   sidechaincompress=threshold=0.04:ratio=4.5:attack=150:release=800:makeup=1:knee=8；
-  amix normalize=0；末尾 alimiter=limit=0.95（防削波）。
+  amix normalize=0；末尾 alimiter=limit=0.89（防削波，给 AAC 峰值回弹留余量）。
 
 规则:
   - 输入必须是没垫过 BGM 的 vN.mp4；文件名含 _bgm 直接报错。
@@ -68,7 +68,7 @@ fi
 [1:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,highpass=f=140,lowpass=f=10000,volume=0.72,afade=t=in:st=0:d=2.6,afade=t=out:st=${FADE_START}:d=4.3[bgm];\
 [orig]asplit[orig1][sc];\
 [bgm][sc]sidechaincompress=threshold=0.04:ratio=4.5:attack=150:release=800:makeup=1:knee=8[ducked];\
-[orig1][ducked]amix=inputs=2:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[a]" \
+[orig1][ducked]amix=inputs=2:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.89[a]" \
   -map 0:v -map "[a]" -c:v copy -c:a aac -ar 48000 -b:a 160k "$OUT" \
   || { echo "mix_bgm.sh: 混音失败" >&2; rm -f "$OUT"; exit 1; }
 [ -s "$OUT" ] || { echo "mix_bgm.sh: 输出为空" >&2; exit 1; }

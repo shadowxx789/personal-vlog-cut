@@ -11,6 +11,7 @@ usage() {
 
 选项:
   --mode static|hpan|vpan|auto   默认 auto（按画幅判断）
+  --fit cover|contain             static 模式适配，默认 cover（裁满无黑边）
   --dur  秒                       默认 static/hpan=4、vpan=8；开场/收尾可手动 5
   --hold 秒                       竖摇起点停留，默认 0.8
   --dir  left|right|up            横摇方向（默认 right）/ 竖摇 up
@@ -22,12 +23,13 @@ usage() {
   - 横摇 y 固定在 anchor-y，只移 x；宽度余量 < 1920 的 10% 时自动退回 static 并提示。
   - 竖摇 scale=1920:-2，y 从下往上，起点停 hold 秒，顶上留一点余量。
   - 禁止 zoompan（1080p 小数变焦像整片在晃）。
+  - --fit contain：画面里的字/主体被裁掉时用（用户偏好"字不全时 contain"）。
   - 结束后自动抽出首帧/尾帧 jpg 并打印路径（认人认头用）。
   - 出错返回非零，不会静默出空文件。
 USAGE
 }
 
-MODE="auto"; DUR=""; HOLD="0.8"; DIR=""; ANCHOR="0.5"
+MODE="auto"; DUR=""; HOLD="0.8"; DIR=""; ANCHOR="0.5"; FIT="cover"
 POS=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -37,6 +39,7 @@ while [ $# -gt 0 ]; do
     --hold) HOLD="$2"; shift 2;;
     --dir) DIR="$2"; shift 2;;
     --anchor-y) ANCHOR="$2"; shift 2;;
+    --fit) FIT="$2"; shift 2;;
     -*) echo "pan_still.sh: 未知参数 $1" >&2; usage >&2; exit 2;;
     *) POS+=("$1"); shift;;
   esac
@@ -47,6 +50,7 @@ IN="${POS[0]}"
 OUT="${POS[1]:-}"
 [ -f "$IN" ] || { echo "pan_still.sh: 输入不存在: $IN" >&2; exit 1; }
 case "$MODE" in static|hpan|vpan|auto) ;; *) echo "pan_still.sh: 非法 --mode $MODE" >&2; exit 2;; esac
+case "$FIT" in cover|contain) ;; *) echo "pan_still.sh: 非法 --fit ${FIT}（只支持 cover|contain）" >&2; exit 2;; esac
 
 FFMPEG="$(command -v ffmpeg || true)"; FFPROBE="$(command -v ffprobe || true)"
 [ -n "$FFMPEG" ] && [ -n "$FFPROBE" ] || { echo "pan_still.sh: 需要 ffmpeg/ffprobe" >&2; exit 1; }
@@ -88,6 +92,10 @@ if [ "$W" -gt 8000 ]; then
 fi
 
 MARGIN_MIN=192   # 1920 的 10%
+case "$FIT" in
+  cover)   STATIC_VF="scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,fps=30,format=yuv420p";;
+  contain) STATIC_VF="scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p";;
+esac
 VF=""; DUR_SET=1; [ -n "$DUR" ] || DUR_SET=0
 
 if [ "$MODE" = "auto" ]; then
@@ -102,7 +110,7 @@ fi
 case "$MODE" in
   static)
     [ "$DUR_SET" = 1 ] || DUR=4
-    VF="scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p"
+    VF="$STATIC_VF"
     ;;
   hpan)
     [ "$DUR_SET" = 1 ] || DUR=4
@@ -116,7 +124,7 @@ case "$MODE" in
     if [ "$MARGIN" -lt "$MARGIN_MIN" ]; then
       echo "pan_still.sh: 横摇余量只有 ${MARGIN}px（< 1920 的 10%）→ 退回 static"
       MODE="static"; DUR=4
-      VF="scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p"
+      VF="$STATIC_VF"
     else
       if [ "$DIR" = "left" ]; then X="(in_w-1920)*(1-t/$DUR)"; else X="(in_w-1920)*t/$DUR"; fi
       VF="$SCALE,crop=1920:1080:'$X':'(in_h-1080)*$ANCHOR',setsar=1,fps=30,format=yuv420p"
@@ -130,7 +138,7 @@ case "$MODE" in
     if [ "$VMARGIN" -lt 108 ]; then
       echo "pan_still.sh: 竖摇余量只有 ${VMARGIN}px → 退回 static"
       MODE="static"; DUR=4
-      VF="scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p"
+      VF="$STATIC_VF"
     else
       # y 从下往上；起点停 HOLD 秒；顶上留一点（停在 5% 余量处）
       Y="(in_h-1080)*(1-0.95*min(1\,max(0\,(t-$HOLD)/($DUR-$HOLD))))"
@@ -145,7 +153,7 @@ if [ -z "$OUT" ]; then
 fi
 mkdir -p "$(dirname "$OUT")"
 
-"$FFMPEG" -y -v error -loop 1 -i "$SRC" -t "$DUR" -vf "$VF" \
+"$FFMPEG" -y -v error -framerate 30 -loop 1 -i "$SRC" -t "$DUR" -vf "$VF" \
   -c:v libx264 -preset fast -crf 18 -an "$OUT" \
   || { echo "pan_still.sh: 编码失败" >&2; rm -f "$OUT"; exit 1; }
 [ -s "$OUT" ] || { echo "pan_still.sh: 输出为空" >&2; exit 1; }

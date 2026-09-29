@@ -60,7 +60,7 @@ if [ "$ACOUNT" -ge 1 ]; then
 fi
 
 if [ "$DISCORD" = 1 ]; then
-  SIZE="$(stat -f %z "$FILE" 2>/dev/null || stat -c %s "$FILE")"
+  SIZE="$(wc -c < "$FILE" | tr -d ' ')"
   [ "$SIZE" -le $((10*1024*1024)) ] && pass "大小 $((SIZE/1024/1024))MB ≤ 10MB" || fail "大小 $((SIZE/1024/1024))MB > 10MB"
   base="$(basename "$FILE")"
   ascii_base="$(printf '%s' "$base" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"

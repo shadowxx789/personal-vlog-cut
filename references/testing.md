@@ -75,3 +75,62 @@ j. 旧 pattern 不变：用 `git show a624a61:scripts/gen_bgm_guitar.py > ref_g.
   - bgm_nylon_sparse_slow_s<seed>.wav（`--pattern sparse` + `--bpm 80` + `--density 0.6` + `--reverb 0.5`）
 - 合成器版（default/plain/lively）已在 v2.1.0 试听过，除非用户要求，不重复生成。
 - 默认值由用户试听后决定，agent 不做选择。
+
+## v2.5.0 验证点（pan_still 帧率/fit、export two-pass、limiter 0.89、wc -c）
+
+**T1 平移不顿。** 做一张 2400×1080 的横向亮度渐变图，hpan 8 s：
+
+```bash
+ffmpeg -f lavfi -i "color=black:s=2400x1080,geq=lum='X*235/W+16':cb=128:cr=128" -frames:v 1 grad.png
+scripts/pan_still.sh grad.png hpan.mp4 --mode hpan --dur 8   # 参数名以脚本实际为准
+ffmpeg -i hpan.mp4 -vf "crop=4:1080:0:0,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=yavg.txt" -f null -
+```
+
+判定标准：
+
+- ffprobe 显示 `r_frame_rate=30/1`，帧数为 240（±1）。
+- 相邻帧 YAVG 差值：除首尾各 1 帧外不许为 0（有 0 就说明有重复帧）；差值的标准差 / 均值 < 0.2。
+- 贴出差值的 min/max/均值/标准差。同一测试用 BASE 版脚本（`git show e57fb28:scripts/pan_still.sh`）也跑一次作对照，预期对照版会出现 0 差值。
+
+**T2 static 默认无黑边。** 做一张 1600×1200（4:3）的 testsrc2 图片，static 模式：
+
+- 输出为 1920×1080。
+- 最左 4 列和最右 4 列的 YAVG 都 > 30（黑边的 YAVG 约为 16）。
+
+**T3 `--fit contain`。** 同一张图加 `--fit contain`：
+
+- 最左 4 列的 YAVG ≤ 20（有 pad 黑边）。
+
+**T4 two-pass 不超限。** 生成 240 s 的高噪声素材：
+
+```bash
+ffmpeg -f lavfi -i "testsrc2=s=1920x1080:r=30,noise=alls=40:allf=t" -f lavfi -i "sine=f=440:r=48000" -t 240 -c:v libx264 -crf 18 -c:a aac -ac 2 src240.mp4
+```
+
+跑 export_discord.sh，判定标准：
+
+- exit 0，文件大小 < 上限，check_delivery.sh 全部 PASS。
+- passlog 残留：`find /tmp "$(pwd)" -name '*2pass*' -newer src240.mp4` 结果为空。
+- 贴出实际大小和视频码率。
+
+**T5 重试路径。** 分两种情况：
+
+- 用 `PVC_DISCORD_LIMIT_BYTES` 设一个比 T4 结果小约 8% 的值再跑：应当触发 1 次重试后成功，日志里能看到两次尝试的码率和大小。
+- 再设一个比 T4 结果小 40% 的值：应当 3 次尝试后 exit 非 0，报错里有每次的大小。
+- 两种情况下 passlog 都不能有残留。
+
+**T6 limiter。** 分四项检查：
+
+- 用 `sine=f=1000` 加 `volume=0dB` 做一条接近满刻度的 BGM wav，和 30 s 的 testsrc2+sine 视频一起跑 mix_bgm.sh。
+- 用 volumedetect 查 `vN_bgm.mp4` 的 max_volume，应当 ≤ −0.5 dB。
+- 再跑 export_discord.sh，check_delivery.sh 的峰值项必须 PASS。
+- 另外用默认木吉他命令生成的 BGM 也混一次，只记录 max_volume，不作判定。
+
+**T7 卫生 + 旧回归。**
+
+- `grep -rn 'stat -f' scripts/` 为空。
+- `grep -rn -- '-loop 1 -i' scripts/ references/`：只允许出现在「片上字幕」的 overlay PNG 示例里。
+- `grep -rn 'limit=0.95'`（CHANGELOG 以外）为空。
+- `git diff --stat e57fb28 -- scripts/gen_bgm.py scripts/gen_bgm_guitar.py scripts/legacy/` 为空。
+- 默认 BGM 两条命令复跑，MD5 仍为 `4f0547731ef7c15112377bc494537b61` / `96bf2aa32f62954ec52e9226dcf12549`。
+- testing.md 原有的全部验证点再完整跑一遍（mute_segment、check_delivery、pan_still 原有项等）。

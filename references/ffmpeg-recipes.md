@@ -33,17 +33,17 @@ ffmpeg -i out.v.mp4 -f lavfi -i anullsrc=r=48000:cl=stereo -map 0:v -map 1:a \
 `zoompan` 的 `d` 不是变量（`on/d` 会报 Undefined constant）。用 `crop`+`t`：
 
 ```
-ffmpeg -loop 1 -i STAIRS.jpg -t 8 \
+ffmpeg -framerate 30 -loop 1 -i STAIRS.jpg -t 8 \
   -vf "scale=1920:-2,crop=1920:1080:0:'(in_h-1080)*(1-min(1\,max(0\,(t-0.8)/6.2)))',fps=30,format=yuv420p" \
   -c:v libx264 -preset fast -crf 20 -an stairs.v.mp4
 ```
 
 ## 横图慢移 / 静帧
 
-优先 `scripts/pan_still.sh`（锁 y 只移 x、余量不足自动退 static、EXIF 校正、抽首尾帧）。脚本覆盖不到时：
+优先 `scripts/pan_still.sh`（锁 y 只移 x、余量不足自动退 static、EXIF 校正、抽首尾帧）。static 默认 cover（裁满）；字/主体被裁时用 pan_still.sh --fit contain。脚本覆盖不到时：
 
 ```
-ffmpeg -loop 1 -i PIC.jpg -t SEC \
+ffmpeg -framerate 30 -loop 1 -i PIC.jpg -t SEC \
   -vf "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080:'if(gt(in_w,1920),(in_w-1920)*t/SEC,0)':Y,fps=30,format=yuv420p" \
   -c:v libx264 -preset fast -crf 18 -an pic.v.mp4
 ```
@@ -92,7 +92,7 @@ ffmpeg -i CUT.mp4 -loop 1 -i overlay_open.png -loop 1 -i overlay_end.png \
 
 - 生成（默认）：`scripts/gen_bgm_guitar.py`，命令和参数只看 [preferences.md](preferences.md)「当前默认」，这里不抄命令。输出为 48k/16bit/立体声、峰值约 -3 dBFS，直接交给 mix_bgm.sh。
 - 合成器版（备用）：`scripts/gen_bgm.py`（`--seed N --dur 秒 [--preset default|plain|lively]`；大调、每小节一和弦、内置音阶自检）。不拆商业曲，每天换 seed。旧 v2 在 `scripts/legacy/`，不再默认使用。
-- 混音：`scripts/mix_bgm.sh`（原声 ×1.18、BGM highpass 140/lowpass 10000 ×0.72、淡入 2.6s/淡出 4.3s、sidechain、末尾 `alimiter=limit=0.95`）。只从**没垫过**的 `vN.mp4` 混，输出 `vN_bgm.mp4` 归档母版。
+- 混音：`scripts/mix_bgm.sh`（原声 ×1.18、BGM highpass 140/lowpass 10000 ×0.72、淡入 2.6s/淡出 4.3s、sidechain、末尾 `alimiter=limit=0.89`）。只从**没垫过**的 `vN.mp4` 混，输出 `vN_bgm.mp4` 归档母版。
 - BGM 比片长短：`acrossfade` 接同一条，**禁止 `apad` 补静音**：
 
 ```
