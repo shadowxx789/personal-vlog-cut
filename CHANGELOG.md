@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## v2.5.3 (2026-09-30)
+- export_discord：中文名默认输出会塌缩成 _dc.mp4 并互相覆盖，已修。
+- pan_still：--max-speed 默认值 5→10（5 会截断常见 3:4 竖图的竖摇）；限速提示给出建议 --dur；新增 --dur/--anchor-y 校验。
 ## v2.5.2 (2026-09-30)
 - pan_still.sh：退回 static 时保留用户 --dur（原先写死 4 s）；新增 --max-speed（默认 5px/帧），全景只平移中间一段（原 10000 宽全景约 56px/帧）；--hold/--dir 校验；非 RGB 图转 RGB，HEIC 走 sips 兜底。
 - export_discord.sh：ASCII 化改为对 stem 判断，避免中文名变成隐藏文件 ".mp4"。

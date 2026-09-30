@@ -30,19 +30,23 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 D="$("$FFPROBE" -v error -show_entries format=duration -of csv=p=0 "$IN")"
 awk "BEGIN{exit !($D>0)}" || { echo "export_discord.sh: 取不到片长" >&2; exit 1; }
 
+# 输出路径：默认 <输入目录>/<输入基名 ASCII 化>_dc.mp4；显式 OUT 只对 stem 化扩展名
 if [ -z "$OUT" ]; then
-  base="$(basename "$IN")"; base="${base%.*}"
-  OUT="$(dirname "$IN")/${base}_dc.mp4"
-fi
-# 文件名强制 ASCII（只对 stem 判断，扩展名固定 .mp4）
-outdir="$(dirname "$OUT")"; outbase="$(basename "$OUT")"
-stem="${outbase%.*}"
-ascii_stem="$(printf '%s' "$stem" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
-ascii_stem="$(printf '%s' "$ascii_stem" | sed 's/^[.-]*//')"
-if [ -z "$ascii_stem" ]; then ascii_stem="export_$(date +%Y%m%d_%H%M%S)"; fi
-if [ "${ascii_stem}.mp4" != "$outbase" ]; then
-  echo "export_discord.sh: 文件名非 ASCII，已改用 ${ascii_stem}.mp4"
-  OUT="$outdir/${ascii_stem}.mp4"
+  inbase="$(basename "$IN")"; inbase="${inbase%.*}"
+  ascii_stem="$(printf '%s' "$inbase" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
+  ascii_stem="$(printf '%s' "$ascii_stem" | sed 's/^[._-]*//')"
+  printf '%s' "$ascii_stem" | LC_ALL=C grep -q '[A-Za-z0-9]' || ascii_stem="export_$(date +%Y%m%d_%H%M%S)"
+  OUT="$(dirname "$IN")/${ascii_stem}_dc.mp4"
+else
+  outdir="$(dirname "$OUT")"; outbase="$(basename "$OUT")"
+  stem="${outbase%.*}"
+  ascii_stem="$(printf '%s' "$stem" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
+  ascii_stem="$(printf '%s' "$ascii_stem" | sed 's/^[._-]*//')"
+  printf '%s' "$ascii_stem" | LC_ALL=C grep -q '[A-Za-z0-9]' || ascii_stem="export_$(date +%Y%m%d_%H%M%S)"
+  if [ "${ascii_stem}.mp4" != "$outbase" ]; then
+    echo "export_discord.sh: 文件名非 ASCII，已改用 ${ascii_stem}.mp4"
+    OUT="$outdir/${ascii_stem}.mp4"
+  fi
 fi
 
 # 目标约 9MB：总码率 kbps = 9*1024*8*0.95/D；视频 = 总 − 80（音频）

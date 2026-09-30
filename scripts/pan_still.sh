@@ -16,7 +16,7 @@ usage() {
   --hold 秒                       竖摇起点停留，默认 0.8
   --dir  left|right|up            横摇方向（默认 right）/ 竖摇 up
   --anchor-y 0..1                 横摇锁定的 y 比例，默认 0.5
-  --max-speed PX                  每帧最大平移像素，默认 5（必须 > 0；超限时只平移中间一段）
+  --max-speed PX                  每帧最大平移像素，默认 10（必须 > 0；超限时只平移中间一段）
   -h, --help                      本帮助
 
 规则:
@@ -30,7 +30,7 @@ usage() {
 USAGE
 }
 
-MODE="auto"; DUR=""; HOLD="0.8"; DIR=""; ANCHOR="0.5"; FIT="cover"; MAXSPD="5"
+MODE="auto"; DUR=""; HOLD="0.8"; DIR=""; ANCHOR="0.5"; FIT="cover"; MAXSPD="10"
 POS=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -54,6 +54,10 @@ OUT="${POS[1]:-}"
 case "$MODE" in static|hpan|vpan|auto) ;; *) echo "pan_still.sh: 非法 --mode $MODE" >&2; exit 2;; esac
 case "$FIT" in cover|contain) ;; *) echo "pan_still.sh: 非法 --fit ${FIT}（只支持 cover|contain）" >&2; exit 2;; esac
 awk "BEGIN{exit !($MAXSPD>0)}" 2>/dev/null || { echo "pan_still.sh: 非法 --max-speed ${MAXSPD}（必须 > 0）" >&2; exit 2; }
+awk "BEGIN{exit !($ANCHOR>=0 && $ANCHOR<=1)}" 2>/dev/null || { echo "pan_still.sh: 非法 --anchor-y ${ANCHOR}（必须 0..1）" >&2; exit 2; }
+if [ -n "$DUR" ]; then
+  awk "BEGIN{exit !($DUR>0)}" 2>/dev/null || { echo "pan_still.sh: 非法 --dur ${DUR}（必须 > 0）" >&2; exit 2; }
+fi
 
 FFMPEG="$(command -v ffmpeg || true)"; FFPROBE="$(command -v ffprobe || true)"
 [ -n "$FFMPEG" ] && [ -n "$FFPROBE" ] || { echo "pan_still.sh: 需要 ffmpeg/ffprobe" >&2; exit 1; }
@@ -151,7 +155,8 @@ case "$MODE" in
     else
       TRAVEL="$(awk "BEGIN{m=$MARGIN; c=$DUR*30*$MAXSPD; printf \"%d\", (m<c?m:c)}")"
       if [ "$TRAVEL" -lt "$MARGIN" ]; then
-        echo "pan_still.sh: 余量 ${MARGIN}px 超过限速，只平移中间 ${TRAVEL}px（--max-speed ${MAXSPD}）"
+        FULLDUR="$(awk "BEGIN{printf \"%.1f\", $MARGIN/(30*$MAXSPD)}")"
+        echo "pan_still.sh: 余量 ${MARGIN}px 超过限速，只平移中间 ${TRAVEL}px（--max-speed ${MAXSPD}）；全程扫完需 --dur ${FULLDUR}"
       fi
       if [ "$DIR" = "left" ]; then X="(in_w-1920-$TRAVEL)/2+$TRAVEL*(1-t/$DUR)"
       else X="(in_w-1920-$TRAVEL)/2+$TRAVEL*t/$DUR"; fi
@@ -172,7 +177,8 @@ case "$MODE" in
       # y 从下往上；起点停 HOLD 秒；顶上留 5% 余量；限速时只从底部上移一段
       VTRAVEL="$(awk "BEGIN{m=$VMARGIN*0.95; c=($DUR-$HOLD)*30*$MAXSPD; printf \"%d\", (m<c?m:c)}")"
       if [ "$VTRAVEL" -lt $(( VMARGIN * 95 / 100 )) ]; then
-        echo "pan_still.sh: 余量 ${VMARGIN}px 超过限速，只从底部上移 ${VTRAVEL}px（--max-speed ${MAXSPD}）"
+        VFULLDUR="$(awk "BEGIN{printf \"%.1f\", $VMARGIN*0.95/(30*$MAXSPD)+$HOLD}")"
+        echo "pan_still.sh: 余量 ${VMARGIN}px 超过限速，只从底部上移 ${VTRAVEL}px（--max-speed ${MAXSPD}）；全程扫完需 --dur ${VFULLDUR}"
       fi
       Y="(in_h-1080)-$VTRAVEL*min(1\,max(0\,(t-$HOLD)/($DUR-$HOLD)))"
       VF="scale=1920:-2,crop=1920:1080:0:'$Y',setsar=1,fps=30,format=yuv420p"
