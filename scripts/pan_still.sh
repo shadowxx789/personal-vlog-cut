@@ -46,13 +46,13 @@ POS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0;;
-    --mode) MODE="$2"; shift 2;;
-    --dur) DUR="$2"; shift 2;;
-    --hold) HOLD="$2"; shift 2;;
-    --dir) DIR="$2"; shift 2;;
-    --anchor-y) ANCHOR="$2"; shift 2;;
-    --fit) FIT="$2"; shift 2;;
-    --max-speed) MAXSPD="$2"; shift 2;;
+    --mode) [ $# -ge 2 ] || { echo "pan_still.sh: $1 缺少取值" >&2; exit 2; }; MODE="$2"; shift 2;;
+    --dur) [ $# -ge 2 ] || { echo "pan_still.sh: $1 缺少取值" >&2; exit 2; }; DUR="$2"; shift 2;;
+    --hold) [ $# -ge 2 ] || { echo "pan_still.sh: $1 缺少取值" >&2; exit 2; }; HOLD="$2"; shift 2;;
+    --dir) [ $# -ge 2 ] || { echo "pan_still.sh: $1 缺少取值" >&2; exit 2; }; DIR="$2"; shift 2;;
+    --anchor-y) [ $# -ge 2 ] || { echo "pan_still.sh: $1 缺少取值" >&2; exit 2; }; ANCHOR="$2"; shift 2;;
+    --fit) [ $# -ge 2 ] || { echo "pan_still.sh: $1 缺少取值" >&2; exit 2; }; FIT="$2"; shift 2;;
+    --max-speed) [ $# -ge 2 ] || { echo "pan_still.sh: $1 缺少取值" >&2; exit 2; }; MAXSPD="$2"; shift 2;;
     -*) echo "pan_still.sh: 未知参数 $1" >&2; usage >&2; exit 2;;
     *) POS+=("$1"); shift;;
   esac

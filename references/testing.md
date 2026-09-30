@@ -88,7 +88,7 @@ j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/st
 ## 试听件
 - 默认 BGM 已定（见 preferences.md「当前默认」）。只有会改变声音的修改才出试听件：ASCII 文件名，60 s，seed 用当天日期，改前改后各一版，通过 MEDIA: 发出，由用户决定。
 
-**T9 全景限速。** 10000×1250 的亮度渐变全景图（整幅 YAVG 需要渐变图才能算 dx；沿用 T1 公式，宽度换成 10000），hpan，4 s：
+**T9 全景限速。** 10000×1250 的亮度渐变全景图（整幅 YAVG 需要渐变图才能算 dx；沿用 T1 公式，宽度换成缩放后的 8640（10000×1250→8000×1000→铺满 1080 高）），hpan，4 s：
 
 - dx 均值 ≤ MAXSPD+0.05（默认 10.05），停帧 0，日志里有"只平移中间"提示，且新版只平移中间 1200px，提示里带「全程扫完需 --dur 22.4」（数值以实际为准，报原文）。
 - 对照 v2.5.1 版 pan_still.sh：dx≈56 px。
@@ -129,3 +129,4 @@ j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/st
 
 - `--dur 0`、`--dur abc`、`--anchor-y 1.5` 各自 exit 2，并且有明确报错。
 - `--anchor-y abc`、`--dur 2x`、`--hold abc`、`--hold -1`、`--max-speed 1e3` 均 exit 2 且报错明确；`--mode vpan --dur 0.5` → exit 2（回归）。
+- `pan_still.sh img.png --dur`（缺值）→ exit 2，报错含「缺少取值」，不得出现 unbound variable。
