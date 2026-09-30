@@ -5,6 +5,7 @@
 - check_delivery.sh：修复 bash 3.2 把全角字符吞进变量名的问题（只在 FAIL 分支触发，会导致报告崩溃而不是报 FAIL）；新增负例 T8。
 - export_discord.sh：3 次都超限时把输出改名为 *_OVERLIMIT，避免被误当交付件发出。
 - testing.md：对照改为金标准 sha256/MD5 表，不再引用 commit hash（本地仓与公开仓 hash 不同）。
+- T1 公式分母改为 235（原写 235−16 有误）；T7 的 git diff 对照也改为金标准 sha256。
 ## v2.5.0 (2026-09-29)
 - pan_still.sh：静帧输入补 -framerate 30（原 25fps 读图、30fps 输出，每 5 帧重复 1 帧，平移会顿）；static 默认改为 cover（原 contain 会加黑边），新增 --fit cover|contain。
 - export_discord.sh：单遍 ABR → two-pass；超 10MB 自动 ×0.9 降码率重试，最多 2 次，仍超限则报错退出；新增测试用环境变量 PVC_DISCORD_LIMIT_BYTES。

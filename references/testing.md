@@ -107,7 +107,7 @@ ffmpeg -i hpan.mp4 -vf "signalstats,metadata=print:key=lavfi.signalstats.YAVG:fi
 判定标准：
 
 - ffprobe 显示 `r_frame_rate=30/1`，帧数 240（±1）。
-- 用整幅画面的 YAVG 反推每帧水平位移 dx。对 2400 宽的渐变图，dx ≈ ΔYAVG × 2400 / (235−16) 像素，方法沿用 v2.5.0 回报里的算法，并把公式写进 testing.md。
+- 用整幅画面的 YAVG 反推每帧水平位移 dx。对 2400 宽的渐变图，dx ≈ ΔYAVG × 2400 / 235 像素（渐变为 X*235/W+16，亮度跨度 16→251，共 235），方法沿用 v2.5.0 回报里的算法，并把公式写进 testing.md。
 - 判定：除首尾各 1 帧外，停帧数（|dx| < 0.5 px）为 0；dx 均值落在 2.0±0.1 px；sd/mean < 0.1。
 - BASE 对照：用 v2.4.2 版 pan_still.sh 跑同一测试（任取本地或公开仓），停帧数应约为 40（即 240/6），用来证明测试能抓到这个 bug。
 - 注明：4 列窄窗的 YAVG 受 8-bit 量化影响（0.25 台阶），零差值不代表重复帧，**不要用它做判据**。
