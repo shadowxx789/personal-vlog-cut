@@ -30,22 +30,39 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 D="$("$FFPROBE" -v error -show_entries format=duration -of csv=p=0 "$IN")"
 awk "BEGIN{exit !($D>0)}" || { echo "export_discord.sh: 取不到片长" >&2; exit 1; }
 
-# 输出路径：默认 <输入目录>/<输入基名 ASCII 化>_dc.mp4；显式 OUT 只对 stem 化扩展名
+# 确定性 ASCII 名：残留 ASCII + cksum 后缀；未改则原样返回
+ascii_name() {
+  _s="$(printf '%s' "$1" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
+  _s="$(printf '%s' "$_s" | sed 's/^[._-]*//')"
+  if [ "$_s" = "$1" ]; then
+    printf '%s' "$_s"
+    return
+  fi
+  _h="$(printf '%08x' "$(printf '%s' "$1" | cksum | cut -d' ' -f1)")"
+  case "$_s" in
+    *[A-Za-z0-9]*) printf '%s' "${_s}_${_h}" ;;
+    *) printf '%s' "export_${_h}" ;;
+  esac
+}
+
+# 输出路径：默认 <输入目录>/$(ascii_name 基名)_dc.mp4；显式 <outdir>/$(ascii_name stem).mp4
 if [ -z "$OUT" ]; then
   inbase="$(basename "$IN")"; inbase="${inbase%.*}"
-  ascii_stem="$(printf '%s' "$inbase" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
-  ascii_stem="$(printf '%s' "$ascii_stem" | sed 's/^[._-]*//')"
-  printf '%s' "$ascii_stem" | LC_ALL=C grep -q '[A-Za-z0-9]' || ascii_stem="export_$(date +%Y%m%d_%H%M%S)"
-  OUT="$(dirname "$IN")/${ascii_stem}_dc.mp4"
+  newstem="$(ascii_name "$inbase")"
+  if [ "$newstem" != "$inbase" ]; then
+    echo "export_discord.sh: 文件名非 ASCII，已改用 ${newstem}_dc.mp4"
+  fi
+  OUT="$(dirname "$IN")/${newstem}_dc.mp4"
 else
   outdir="$(dirname "$OUT")"; outbase="$(basename "$OUT")"
   stem="${outbase%.*}"
-  ascii_stem="$(printf '%s' "$stem" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
-  ascii_stem="$(printf '%s' "$ascii_stem" | sed 's/^[._-]*//')"
-  printf '%s' "$ascii_stem" | LC_ALL=C grep -q '[A-Za-z0-9]' || ascii_stem="export_$(date +%Y%m%d_%H%M%S)"
-  if [ "${ascii_stem}.mp4" != "$outbase" ]; then
-    echo "export_discord.sh: 文件名非 ASCII，已改用 ${ascii_stem}.mp4"
-    OUT="$outdir/${ascii_stem}.mp4"
+  newstem="$(ascii_name "$stem")"
+  if [ "$newstem" != "$stem" ]; then
+    echo "export_discord.sh: 文件名非 ASCII，已改用 ${newstem}.mp4"
+    OUT="$outdir/${newstem}.mp4"
+  elif [ "${stem}.mp4" != "$outbase" ]; then
+    echo "export_discord.sh: 扩展名改为 .mp4：${stem}.mp4"
+    OUT="$outdir/${stem}.mp4"
   fi
 fi
 

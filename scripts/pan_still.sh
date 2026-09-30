@@ -30,6 +30,17 @@ usage() {
 USAGE
 }
 
+is_num() {
+  case "$1" in ''|*[!0-9.]*|*.*.*) return 1;; esac
+  case "$1" in *.*)
+    case "${1#*.}" in ''|*[!0-9]*) return 1;; esac ;;
+  esac
+  case "$1" in .*)
+    case "${1#.}" in *[0-9]*) ;; *) return 1;; esac ;;
+  esac
+  case "$1" in *[0-9]*) return 0;; *) return 1;; esac
+}
+
 MODE="auto"; DUR=""; HOLD="0.8"; DIR=""; ANCHOR="0.5"; FIT="cover"; MAXSPD="10"
 POS=()
 while [ $# -gt 0 ]; do
@@ -53,9 +64,13 @@ OUT="${POS[1]:-}"
 [ -f "$IN" ] || { echo "pan_still.sh: 输入不存在: $IN" >&2; exit 1; }
 case "$MODE" in static|hpan|vpan|auto) ;; *) echo "pan_still.sh: 非法 --mode $MODE" >&2; exit 2;; esac
 case "$FIT" in cover|contain) ;; *) echo "pan_still.sh: 非法 --fit ${FIT}（只支持 cover|contain）" >&2; exit 2;; esac
+is_num "$MAXSPD" || { echo "pan_still.sh: 非法 --max-speed ${MAXSPD}（必须 > 0）" >&2; exit 2; }
 awk "BEGIN{exit !($MAXSPD>0)}" 2>/dev/null || { echo "pan_still.sh: 非法 --max-speed ${MAXSPD}（必须 > 0）" >&2; exit 2; }
+is_num "$ANCHOR" || { echo "pan_still.sh: 非法 --anchor-y ${ANCHOR}（必须 0..1）" >&2; exit 2; }
 awk "BEGIN{exit !($ANCHOR>=0 && $ANCHOR<=1)}" 2>/dev/null || { echo "pan_still.sh: 非法 --anchor-y ${ANCHOR}（必须 0..1）" >&2; exit 2; }
+is_num "$HOLD" || { echo "pan_still.sh: 非法 --hold ${HOLD}（必须 ≥ 0 的数字）" >&2; exit 2; }
 if [ -n "$DUR" ]; then
+  is_num "$DUR" || { echo "pan_still.sh: 非法 --dur ${DUR}（必须 > 0）" >&2; exit 2; }
   awk "BEGIN{exit !($DUR>0)}" 2>/dev/null || { echo "pan_still.sh: 非法 --dur ${DUR}（必须 > 0）" >&2; exit 2; }
 fi
 

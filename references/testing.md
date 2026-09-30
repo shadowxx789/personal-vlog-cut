@@ -91,12 +91,14 @@ j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/st
 **T9 全景限速。** 10000×1250 的亮度渐变全景图（整幅 YAVG 需要渐变图才能算 dx；沿用 T1 公式，宽度换成 10000），hpan，4 s：
 
 - dx 均值 ≤ MAXSPD+0.05（默认 10.05），停帧 0，日志里有"只平移中间"提示，且新版只平移中间 1200px，提示里带「全程扫完需 --dur 22.4」（数值以实际为准，报原文）。
-- 对照 BASE：dx 均值应约为 56 px。
+- 对照 v2.5.1 版 pan_still.sh：dx≈56 px。
 - 再用 1600×1200 的图跑一次，确认 dx 仍约为 4 px，没有被限速。
 
-**T9b 竖图不误伤。** 3024×4032 竖图（geq 合成，底蓝顶红）vpan 默认参数：
+**T9b 竖图限速反例。** 3024×4032 全高线性渐变竖图（geq 合成，顶 R=255→底 R=0），vpan 默认参数：
 
-- 不出现限速提示，尾帧 R ≥ 200。
+- 默认：不出现限速提示，尾帧 R ≥ 185（理论≈194）。
+- 反例 `--max-speed 5`：出现限速提示，尾帧 R ≤ 170（理论≈161）。
+- 注：分带图在限速 5 下 R≈208，测不出旧 bug，禁用。
 
 **T10 --dur 保留。** 做一张余量不足的图（比如 1920×1000），`--mode hpan --dur 8`：
 
@@ -107,9 +109,14 @@ j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/st
 
 - 输出文件名不以 `.` 开头，stem 非空，check_delivery 全部 PASS。
 
-**T11b 默认输出名。** 输入 /tmp/pvc-test/v253/山行.mp4 和 河边.mp4，都省略 OUT：
+**T11b 确定性命名。**
 
-- 两个输出名不同，都不以 `.` 或 `_` 开头，都以 `_dc.mp4` 结尾，check_delivery 全部 PASS。
+- 山行.mp4 / 河边.mp4 省略 OUT → 名字不同，形如 `export_<8hex>_dc.mp4`。
+- 山行2.mp4 / 河边2.mp4 → 名字不同，形如 `2_<8hex>_dc.mp4`。
+- 山行.mp4 导出两次 → 名字相同。
+- trip.mp4 → `trip_dc.mp4`（无哈希、无提示）。
+- 显式 OUT=trip.mov → `trip.mp4` + 扩展名提示。
+- 全部 check_delivery PASS。
 
 **T12 mix_bgm 负例。**
 
@@ -121,3 +128,4 @@ j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/st
 **T14 参数校验。**
 
 - `--dur 0`、`--dur abc`、`--anchor-y 1.5` 各自 exit 2，并且有明确报错。
+- `--anchor-y abc`、`--dur 2x`、`--hold abc`、`--hold -1`、`--max-speed 1e3` 均 exit 2 且报错明确；`--mode vpan --dur 0.5` → exit 2（回归）。

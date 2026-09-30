@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v2.5.4 (2026-09-30)
+- export_discord：非 ASCII 名改为「残留 ASCII + cksum」确定性命名（修 山行2/河边2 撞名、时间戳名不可复现）；扩展名改写单独提示。
+- pan_still：数字参数先校验格式（修 abc/2x 绕过）。
+- testing：T9b 改线性渐变+反例；T9 对照写死 v2.5.1。
 ## v2.5.3 (2026-09-30)
 - export_discord：中文名默认输出会塌缩成 _dc.mp4 并互相覆盖，已修。
 - pan_still：--max-speed 默认值 5→10（5 会截断常见 3:4 竖图的竖摇）；限速提示给出建议 --dur；新增 --dur/--anchor-y 校验。
