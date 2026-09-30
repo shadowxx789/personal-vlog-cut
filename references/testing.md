@@ -4,6 +4,24 @@
 
 动 skill 本体前先把整个目录备份成 `<name>.bak-YYYYMMDD/`；备份放 skills 目录里会被索引成第二个同名 skill，记得把备份的 frontmatter `name` 改成 `<name>-bak-YYYYMMDD`，否则 `skill_view` 会报歧义。
 
+## 金标准表（测试一律不引用 commit hash）
+
+> **本地仓和公开仓 hash 不同，测试一律不引用 commit hash。**下面的值是唯一判据。
+
+| 项目 | 金标准值 |
+|---|---|
+| `scripts/gen_bgm.py` sha256（v3.0.0） | `979a02f9c0e0cd743b310173b1fa99fca2ef70f572c63c7f5b0fc97a511a80f7` |
+| `scripts/gen_bgm_guitar.py` sha256（v1.1.0） | `0bd4114bcec3bb919a6bf7355d286bddd75eca401d3c85751f12d93208a94426` |
+| `scripts/legacy/gen_bgm_v2.py` sha256 | `dc2c3c810dd3df144f9942796a1224ed1000ea369e6909ac137eb4840a58bb7e` |
+| gen_bgm default（seed 1，dur 60）WAV md5 | `3d4043a9dad21e6f2dd6bcd900ce3a84` |
+| gen_bgm plain（seed 1，dur 60）WAV md5 | `032ac7baa1f78adbdfbec56247cb7f1a` |
+| gen_bgm lively（seed 1，dur 60）WAV md5 | `a02967892cdb87dcd368a129275bbe43` |
+| gen_bgm_guitar mix（seed 7，dur 60）MIDI md5 | `512d615a8b64351d0d5c0b4cb5e652ae` |
+| gen_bgm_guitar finger（seed 7，dur 60）MIDI md5 | `d275b45255380c957eac7f16923afff6` |
+| gen_bgm_guitar strum（seed 7，dur 60）MIDI md5 | `2f2d8dd6f1b901e57c5cb5deb98b1798` |
+| 默认 BGM（nylon sparse 88，seed 20260929，dur 60）WAV md5 | `4f0547731ef7c15112377bc494537b61` |
+| 备选 BGM（nylon sparse 80 / density 0.6 / reverb 0.5，seed 20260929，dur 60）WAV md5 | `96bf2aa32f62954ec52e9226dcf12549` |
+
 ## 素材合成（先造图，再跑脚本）
 
 - 画幅组：`testsrc2` 各一张 4:3 1600×1200、16:9 1920×1080、竖 1200×1920、10000×1250 全景。
@@ -47,14 +65,14 @@ f. 规格（针对 long.wav）：
    - ffprobe 显示 48000 Hz、2 声道、s16，时长 180.000 s（±1 采样）。
    - `ffmpeg -i long.wav -af volumedetect -f null -` 的 max_volume 在 -3.5 到 -2.5 dB 之间。
    - `ffmpeg -sseof -0.3 -i long.wav -af volumedetect -f null -` 的 max_volume < -25 dB。
-g. 旧预设不变：
-   - 先运行 `git show 457e704:scripts/gen_bgm.py > ref.py`。
-   - ref.py 与 scripts/gen_bgm.py 分别生成 default/plain/lively（seed 1，dur 60），三对 MD5 必须完全相同。
+g. 旧预设不变（金标准，不引用 commit hash）：
+   - `shasum -a 256 scripts/gen_bgm.py` 必须等于金标准表的 v3.0.0 sha256（完整值比对，不做前缀比对）。
+   - default/plain/lively（seed 1，dur 60）三个 WAV 的 MD5 必须分别等于金标准表的值（完整值）。
 h. 负例（各自退出码必须为 2，并有明确报错）：`--sf2 /nonexistent.sf2`、`--fluidsynth /nonexistent`、`--dur 5`。
 i. 仓库卫生：
    - `git ls-files | grep -i '\.sf2$'` 为空。
    - 在 CHANGELOG.md 以外 grep `Karplus`，结果为空。
-j. 旧 pattern 不变：用 `git show a624a61:scripts/gen_bgm_guitar.py > ref_g.py`（BASE），对 mix/finger/strum 各跑 `--seed 7 --dur 60 --print-chords --midi-out`，新旧两边的 MIDI MD5 必须完全相同。
+j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/strum 各跑 `--seed 7 --dur 60 --print-chords --midi-out`，MIDI 的 MD5 必须分别等于金标准表的 mix/finger/strum 值（完整值）。
 
 ## 链路验证点
 
@@ -83,14 +101,16 @@ j. 旧 pattern 不变：用 `git show a624a61:scripts/gen_bgm_guitar.py > ref_g.
 ```bash
 ffmpeg -f lavfi -i "color=black:s=2400x1080,geq=lum='X*235/W+16':cb=128:cr=128" -frames:v 1 grad.png
 scripts/pan_still.sh grad.png hpan.mp4 --mode hpan --dur 8   # 参数名以脚本实际为准
-ffmpeg -i hpan.mp4 -vf "crop=4:1080:0:0,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=yavg.txt" -f null -
+ffmpeg -i hpan.mp4 -vf "signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=yavg.txt" -f null -
 ```
 
 判定标准：
 
-- ffprobe 显示 `r_frame_rate=30/1`，帧数为 240（±1）。
-- 相邻帧 YAVG 差值：除首尾各 1 帧外不许为 0（有 0 就说明有重复帧）；差值的标准差 / 均值 < 0.2。
-- 贴出差值的 min/max/均值/标准差。同一测试用 BASE 版脚本（`git show e57fb28:scripts/pan_still.sh`）也跑一次作对照，预期对照版会出现 0 差值。
+- ffprobe 显示 `r_frame_rate=30/1`，帧数 240（±1）。
+- 用整幅画面的 YAVG 反推每帧水平位移 dx。对 2400 宽的渐变图，dx ≈ ΔYAVG × 2400 / (235−16) 像素，方法沿用 v2.5.0 回报里的算法，并把公式写进 testing.md。
+- 判定：除首尾各 1 帧外，停帧数（|dx| < 0.5 px）为 0；dx 均值落在 2.0±0.1 px；sd/mean < 0.1。
+- BASE 对照：用 v2.4.2 版 pan_still.sh 跑同一测试（任取本地或公开仓），停帧数应约为 40（即 240/6），用来证明测试能抓到这个 bug。
+- 注明：4 列窄窗的 YAVG 受 8-bit 量化影响（0.25 台阶），零差值不代表重复帧，**不要用它做判据**。
 
 **T2 static 默认无黑边。** 做一张 1600×1200（4:3）的 testsrc2 图片，static 模式：
 
@@ -115,8 +135,9 @@ ffmpeg -f lavfi -i "testsrc2=s=1920x1080:r=30,noise=alls=40:allf=t" -f lavfi -i 
 
 **T5 重试路径。** 分两种情况：
 
-- 用 `PVC_DISCORD_LIMIT_BYTES` 设一个比 T4 结果小约 8% 的值再跑：应当触发 1 次重试后成功，日志里能看到两次尝试的码率和大小。
-- 再设一个比 T4 结果小 40% 的值：应当 3 次尝试后 exit 非 0，报错里有每次的大小。
+- 上限设为 `T4 实际大小 × 0.95`（取整字节）。判定：正好 2 次尝试（1 次重试）后成功，exit 0。
+- 另加一条：每次重试的 VBPS 等于上次 × 0.9 取整，日志里逐次可查。
+- 再设一个比 T4 结果小 40% 的值：应当 3 次尝试后 exit 非 0，报错里有每次的大小。追加判定：原交付名的文件不存在，`*_OVERLIMIT.mp4` 存在。
 - 两种情况下 passlog 都不能有残留。
 
 **T6 limiter。** 分四项检查：
@@ -131,6 +152,21 @@ ffmpeg -f lavfi -i "testsrc2=s=1920x1080:r=30,noise=alls=40:allf=t" -f lavfi -i 
 - `grep -rn 'stat -f' scripts/` 为空。
 - `grep -rn -- '-loop 1 -i' scripts/ references/`：只允许出现在「片上字幕」的 overlay PNG 示例里。
 - `grep -rn 'limit=0.95'`（CHANGELOG 以外）为空。
-- `git diff --stat e57fb28 -- scripts/gen_bgm.py scripts/gen_bgm_guitar.py scripts/legacy/` 为空。
-- 默认 BGM 两条命令复跑，MD5 仍为 `4f0547731ef7c15112377bc494537b61` / `96bf2aa32f62954ec52e9226dcf12549`。
+- `shasum -a 256` 校验 gen_bgm.py / gen_bgm_guitar.py / scripts/legacy/gen_bgm_v2.py 都等于金标准表（证明 BGM 代码未动，不引用 commit hash）。
+- 默认 BGM 两条命令复跑，MD5 仍等于金标准表的默认/备选值。
 - testing.md 原有的全部验证点再完整跑一遍（mute_segment、check_delivery、pan_still 原有项等）。
+
+**T8 负例：FAIL 分支不崩（bash 3.2 全角变量名）。**
+
+```bash
+ffmpeg -f lavfi -i "testsrc2=s=1920x1080:r=30" -f lavfi -i "sine=f=440:r=48000" -t 5 \
+  -vf "setsar=4/3,format=yuv444p" -c:v libx264 -profile:v high444 -c:a aac bad.mp4
+scripts/check_delivery.sh bad.mp4 > t8.log 2>&1; echo "exit=$?"
+```
+
+判定：
+
+- exit 非 0。
+- t8.log 里 SAR 和 pix_fmt（或 profile）两项都打印出带实际值的 FAIL 行。
+- t8.log 里不出现 `unbound variable`。
+- 再用 BASE 版的 check_delivery.sh 跑同一素材作对照，预期会出现 `unbound variable`，或 FAIL 行缺值。贴出对照结果。

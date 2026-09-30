@@ -74,7 +74,9 @@ while :; do
   echo "export_discord.sh: 尝试 ${attempt}：video ${VBPS}k，大小 $((SIZE/1024))KB（上限 $((LIMIT_BYTES/1024/1024))MB）"
   if [ "$SIZE" -lt "$LIMIT_BYTES" ]; then break; fi
   if [ "$attempt" -ge 3 ]; then
-    echo "export_discord.sh: 尝试 3 次仍超过上限（每次的码率和大小见上），输出保留但不可用。" >&2
+    OVER="${OUT%.*}_OVERLIMIT.${OUT##*.}"
+    mv "$OUT" "$OVER"
+    echo "export_discord.sh: 尝试 3 次仍超过上限（每次的码率和大小见上），已改名 ${OVER}，不可当交付件发出。" >&2
     exit 1
   fi
   VBPS="$(awk "BEGIN{printf \"%d\", int($VBPS*0.9)}")"

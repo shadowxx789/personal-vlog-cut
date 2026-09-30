@@ -1,7 +1,7 @@
 ---
 name: personal-vlog-cut
 description: "剪 用户 的个人爬山/旅行/明信片 vlog（ffmpeg 或 ChatCut Desktop）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。Use for personal hike/travel vlog cutting."
-version: 2.5.0
+version: 2.5.1
 ---
 
 # Personal vlog cut

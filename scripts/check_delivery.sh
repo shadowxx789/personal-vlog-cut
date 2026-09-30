@@ -44,10 +44,10 @@ VDUR="$("$FFPROBE" -v error -select_streams v:0 -show_entries stream=duration -o
 ACOUNT="$("$FFPROBE" -v error -select_streams a -show_entries stream=index -of csv=p=0 "$FILE" | wc -l | tr -d ' ')"
 
 [ "$W" = "1920" ] && [ "$H" = "1080" ] && pass "分辨率 1920×1080" || fail "分辨率 ${W}×${H}（要求 1920×1080）"
-[ "$SAR" = "1:1" ] && pass "SAR 1:1" || fail "SAR=$SAR（要求 1:1）"
-[ "$DAR" = "16:9" ] && pass "DAR 16:9" || fail "DAR=$DAR（要求 16:9）"
-[ "$PIX" = "yuv420p" ] && pass "pix_fmt yuv420p" || fail "pix_fmt=$PIX（拒绝 4:4:4，要求 yuv420p）"
-case "$PROF" in *4:4:4*) fail "profile=$PROF（High 4:4:4 手机播不了）";; *) pass "profile $PROF";; esac
+[ "$SAR" = "1:1" ] && pass "SAR 1:1" || fail "SAR=${SAR}（要求 1:1）"
+[ "$DAR" = "16:9" ] && pass "DAR 16:9" || fail "DAR=${DAR}（要求 16:9）"
+[ "$PIX" = "yuv420p" ] && pass "pix_fmt yuv420p" || fail "pix_fmt=${PIX}（拒绝 4:4:4，要求 yuv420p）"
+case "$PROF" in *4:4:4*) fail "profile=${PROF}（High 4:4:4 手机播不了）";; *) pass "profile $PROF";; esac
 [ "$ACOUNT" -ge 1 ] && pass "有音轨（${ACOUNT} 条）" || fail "没有音轨"
 
 if [ "$ACOUNT" -ge 1 ]; then

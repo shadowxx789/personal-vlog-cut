@@ -1,6 +1,6 @@
 # personal-vlog-cut
 
-> 剪个人爬山 / 旅行 / 明信片 vlog 的 agent skill（v2.5.0）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。
+> 剪个人爬山 / 旅行 / 明信片 vlog 的 agent skill（v2.5.1）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。
 >
 > **本仓库是脱敏公开版**：执行规则与本地使用版完全一致，仅地名与家人称谓做了泛化；带真实案例的踩坑实录留在本地，不公开。
 
@@ -32,7 +32,7 @@
 | `pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4：横摇锁 y 只移 x、竖摇从下往上、EXIF 方向校正、余量不足自动退 static；static 默认 cover（裁满），--fit contain 可选 |
 | `mix_bgm.sh` | 原声 + 垫乐 sidechain 混音（末尾 `alimiter` 防削波），输出归档母版 `vN_bgm.mp4` |
 | `mute_segment.sh` | 单切静音：`apad` 到视频时长，音画时长差 ≤ 1 帧 |
-| `export_discord.sh` | 按片长自动算码率，two-pass 压到约 9MB，超 10MB 自动降码率重试 2 次、1080p、文件名强制 ASCII |
+| `export_discord.sh` | 按片长自动算码率，two-pass 压到约 9MB，超 10MB 自动降码率重试 2 次、1080p、文件名强制 ASCII；超限输出改名 _OVERLIMIT |
 | `check_delivery.sh` | 交付前体检（SAR/DAR/色深/峰值等逐项 PASS/FAIL）+ 均匀抽 6 帧接触表 |
 
 所有脚本都有 `--help`；出错返回非零并打印原因，不静默出空文件。
