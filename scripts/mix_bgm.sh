@@ -37,6 +37,9 @@ D="$("$FFPROBE" -v error -show_entries format=duration -of csv=p=0 "$VID")"
 L="$("$FFPROBE" -v error -show_entries format=duration -of csv=p=0 "$BGM")"
 [ -n "$D" ] && [ -n "$L" ] || { echo "mix_bgm.sh: ffprobe 取不到时长" >&2; exit 1; }
 awk "BEGIN{exit !($D>0 && $L>0)}" || { echo "mix_bgm.sh: 时长非法 D=$D L=$L" >&2; exit 1; }
+ACOUNT="$("$FFPROBE" -v error -select_streams a -show_entries stream=index -of csv=p=0 "$VID" | wc -l | tr -d ' ')"
+[ "$ACOUNT" -ge 1 ] || { echo "mix_bgm.sh: 视频没有音轨。先用 mute_segment.sh 补静音轨。" >&2; exit 1; }
+awk "BEGIN{exit !($D >= 7)}" 2>/dev/null || { echo "mix_bgm.sh: 片长只有 ${D}s（< 7s；淡入 2.6s + 淡出 4.3s 会叠在一起），拒绝混音。" >&2; exit 1; }
 
 LONG="$BGM"
 if awk "BEGIN{exit !($L < $D)}"; then

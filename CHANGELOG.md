@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v2.5.2 (2026-09-30)
+- pan_still.sh：退回 static 时保留用户 --dur（原先写死 4 s）；新增 --max-speed（默认 5px/帧），全景只平移中间一段（原 10000 宽全景约 56px/帧）；--hold/--dir 校验；非 RGB 图转 RGB，HEIC 走 sips 兜底。
+- export_discord.sh：ASCII 化改为对 stem 判断，避免中文名变成隐藏文件 ".mp4"。
+- mix_bgm.sh：无音轨、片长 < 7 s 时给出明确报错。
+- check_delivery.sh：峰值读不到时明确 FAIL；大小判断与 export 统一为 < 10MB。
+- testing.md：passlog 残留检查改为实际文件名（原 *2pass* 永远为空）；T6 改用真正满刻度的热信号；自指 grep 改用 [x] 写法；T1 补上可执行的 dx 算法；新增 T9–T13。
 ## v2.5.1 (2026-09-30)
 - testing.md 口径修订：T1 改用整幅 dx 判据（8-bit 量化下窄窗零差值≠重复帧）；T5 上限改为 T4×0.95（固定 80k 音频下 ×0.9 码率只缩约 7.5% 总大小）。
 - check_delivery.sh：修复 bash 3.2 把全角字符吞进变量名的问题（只在 FAIL 分支触发，会导致报告崩溃而不是报 FAIL）；新增负例 T8。

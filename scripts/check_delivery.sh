@@ -55,13 +55,16 @@ if [ "$ACOUNT" -ge 1 ]; then
   DIFF="$(awk "BEGIN{d=$ADUR-$VDUR; if(d<0)d=-d; printf \"%.4f\", d}")"
   awk "BEGIN{exit !($DIFF<=0.0334)}" && pass "音画时长差 ${DIFF}s ≤ 1 帧" || fail "音画时长差 ${DIFF}s > 1 帧"
   MAXV="$("$FFMPEG" -i "$FILE" -af volumedetect -f null - 2>&1 | sed -n 's/.*max_volume: \([-0-9.]*\) dB.*/\1/p' | head -1)"
-  [ -n "$MAXV" ] || MAXV="?"
-  awk "BEGIN{exit !($MAXV<=0)}" && pass "峰值 ${MAXV} dB ≤ 0 dBFS" || fail "峰值 ${MAXV} dB 过 0 dBFS"
+  if [ -n "$MAXV" ]; then
+    awk "BEGIN{exit !($MAXV<=0)}" && pass "峰值 ${MAXV} dB ≤ 0 dBFS" || fail "峰值 ${MAXV} dB 过 0 dBFS"
+  else
+    fail "峰值读不到（volumedetect 无输出）"
+  fi
 fi
 
 if [ "$DISCORD" = 1 ]; then
   SIZE="$(wc -c < "$FILE" | tr -d ' ')"
-  [ "$SIZE" -le $((10*1024*1024)) ] && pass "大小 $((SIZE/1024/1024))MB ≤ 10MB" || fail "大小 $((SIZE/1024/1024))MB > 10MB"
+  [ "$SIZE" -lt $((10*1024*1024)) ] && pass "大小 $((SIZE/1024/1024))MB < 10MB" || fail "大小 $((SIZE/1024/1024))MB ≥ 10MB"
   base="$(basename "$FILE")"
   ascii_base="$(printf '%s' "$base" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
   [ "$ascii_base" = "$base" ] && pass "文件名 ASCII" || fail "文件名非 ASCII：$base"

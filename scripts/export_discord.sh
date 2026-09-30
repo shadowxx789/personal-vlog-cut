@@ -34,13 +34,15 @@ if [ -z "$OUT" ]; then
   base="$(basename "$IN")"; base="${base%.*}"
   OUT="$(dirname "$IN")/${base}_dc.mp4"
 fi
-# 文件名强制 ASCII
+# 文件名强制 ASCII（只对 stem 判断，扩展名固定 .mp4）
 outdir="$(dirname "$OUT")"; outbase="$(basename "$OUT")"
-ascii_base="$(printf '%s' "$outbase" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
-if [ -z "$ascii_base" ]; then ascii_base="export.mp4"; fi
-if [ "$ascii_base" != "$outbase" ]; then
-  echo "export_discord.sh: 文件名非 ASCII，已改用 $ascii_base"
-  OUT="$outdir/$ascii_base"
+stem="${outbase%.*}"
+ascii_stem="$(printf '%s' "$stem" | LC_ALL=C tr -cd 'A-Za-z0-9._-')"
+ascii_stem="$(printf '%s' "$ascii_stem" | sed 's/^[.-]*//')"
+if [ -z "$ascii_stem" ]; then ascii_stem="export_$(date +%Y%m%d_%H%M%S)"; fi
+if [ "${ascii_stem}.mp4" != "$outbase" ]; then
+  echo "export_discord.sh: 文件名非 ASCII，已改用 ${ascii_stem}.mp4"
+  OUT="$outdir/${ascii_stem}.mp4"
 fi
 
 # 目标约 9MB：总码率 kbps = 9*1024*8*0.95/D；视频 = 总 − 80（音频）

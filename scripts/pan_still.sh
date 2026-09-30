@@ -16,6 +16,7 @@ usage() {
   --hold 秒                       竖摇起点停留，默认 0.8
   --dir  left|right|up            横摇方向（默认 right）/ 竖摇 up
   --anchor-y 0..1                 横摇锁定的 y 比例，默认 0.5
+  --max-speed PX                  每帧最大平移像素，默认 5（必须 > 0；超限时只平移中间一段）
   -h, --help                      本帮助
 
 规则:
@@ -29,7 +30,7 @@ usage() {
 USAGE
 }
 
-MODE="auto"; DUR=""; HOLD="0.8"; DIR=""; ANCHOR="0.5"; FIT="cover"
+MODE="auto"; DUR=""; HOLD="0.8"; DIR=""; ANCHOR="0.5"; FIT="cover"; MAXSPD="5"
 POS=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -40,6 +41,7 @@ while [ $# -gt 0 ]; do
     --dir) DIR="$2"; shift 2;;
     --anchor-y) ANCHOR="$2"; shift 2;;
     --fit) FIT="$2"; shift 2;;
+    --max-speed) MAXSPD="$2"; shift 2;;
     -*) echo "pan_still.sh: 未知参数 $1" >&2; usage >&2; exit 2;;
     *) POS+=("$1"); shift;;
   esac
@@ -51,6 +53,7 @@ OUT="${POS[1]:-}"
 [ -f "$IN" ] || { echo "pan_still.sh: 输入不存在: $IN" >&2; exit 1; }
 case "$MODE" in static|hpan|vpan|auto) ;; *) echo "pan_still.sh: 非法 --mode $MODE" >&2; exit 2;; esac
 case "$FIT" in cover|contain) ;; *) echo "pan_still.sh: 非法 --fit ${FIT}（只支持 cover|contain）" >&2; exit 2;; esac
+awk "BEGIN{exit !($MAXSPD>0)}" 2>/dev/null || { echo "pan_still.sh: 非法 --max-speed ${MAXSPD}（必须 > 0）" >&2; exit 2; }
 
 FFMPEG="$(command -v ffmpeg || true)"; FFPROBE="$(command -v ffprobe || true)"
 [ -n "$FFMPEG" ] && [ -n "$FFPROBE" ] || { echo "pan_still.sh: 需要 ffmpeg/ffprobe" >&2; exit 1; }
@@ -68,16 +71,36 @@ UV="$(command -v uv || echo "$HOME/.hermes/bin/uv")"
 if [ -z "$PY" ] && [ -x "$UV" ]; then PY="$UV run --with pillow python"; fi
 [ -n "$PY" ] || { echo "pan_still.sh: 找不到带 Pillow 的 python（EXIF 校正需要）" >&2; exit 1; }
 
-# 1) EXIF 方向校正（+ 首步落地为 png）
+# 1) EXIF 方向校正（+ 首步落地为 png；打不开的图先走 sips 转换）
 FIXED="$WORK/fixed.png"
-$PY - "$IN" "$FIXED" <<'PYEOF' || { echo "pan_still.sh: EXIF 校正失败" >&2; exit 1; }
+if ! $PY - "$IN" "$FIXED" <<'PYEOF'
 import sys
 from PIL import Image, ImageOps
 src, dst = sys.argv[1], sys.argv[2]
 im = Image.open(src)
 im = ImageOps.exif_transpose(im)
+if im.mode not in ("RGB", "RGBA", "L"):
+    im = im.convert("RGB")
 im.save(dst)
 PYEOF
+then
+  if command -v sips >/dev/null 2>&1; then
+    sips -s format png "$IN" --out "$WORK/heic.png" >/dev/null 2>&1 \
+      || { echo "pan_still.sh: sips 转换失败: $IN" >&2; exit 1; }
+    $PY - "$WORK/heic.png" "$FIXED" <<'PYEOF' || { echo "pan_still.sh: EXIF 校正失败" >&2; exit 1; }
+import sys
+from PIL import Image, ImageOps
+src, dst = sys.argv[1], sys.argv[2]
+im = Image.open(src)
+im = ImageOps.exif_transpose(im)
+if im.mode not in ("RGB", "RGBA", "L"):
+    im = im.convert("RGB")
+im.save(dst)
+PYEOF
+  else
+    echo "pan_still.sh: 打不开图片 ${IN}（HEIC 需要 macOS sips 或 pillow-heif）" >&2; exit 1
+  fi
+fi
 
 # 2) 宽超约 8K 先缩
 DIM="$("$FFPROBE" -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$FIXED")"
@@ -114,7 +137,7 @@ case "$MODE" in
     ;;
   hpan)
     [ "$DUR_SET" = 1 ] || DUR=4
-    [ -n "$DIR" ] || DIR="right"
+    case "$DIR" in left|right) ;; "") DIR="right";; *) echo "pan_still.sh: WARN --dir ${DIR} 与 hpan 不匹配，改用默认 right" >&2; DIR="right";; esac
     W1=$(awk "BEGIN{printf \"%d\", $W*1080/$H}")
     SCALE="scale=-2:1080"
     if [ "$W1" -lt 1920 ]; then
@@ -123,25 +146,35 @@ case "$MODE" in
     MARGIN=$(( W1 - 1920 ))
     if [ "$MARGIN" -lt "$MARGIN_MIN" ]; then
       echo "pan_still.sh: 横摇余量只有 ${MARGIN}px（< 1920 的 10%）→ 退回 static"
-      MODE="static"; DUR=4
+      MODE="static"; [ "$DUR_SET" = 1 ] || DUR=4
       VF="$STATIC_VF"
     else
-      if [ "$DIR" = "left" ]; then X="(in_w-1920)*(1-t/$DUR)"; else X="(in_w-1920)*t/$DUR"; fi
+      TRAVEL="$(awk "BEGIN{m=$MARGIN; c=$DUR*30*$MAXSPD; printf \"%d\", (m<c?m:c)}")"
+      if [ "$TRAVEL" -lt "$MARGIN" ]; then
+        echo "pan_still.sh: 余量 ${MARGIN}px 超过限速，只平移中间 ${TRAVEL}px（--max-speed ${MAXSPD}）"
+      fi
+      if [ "$DIR" = "left" ]; then X="(in_w-1920-$TRAVEL)/2+$TRAVEL*(1-t/$DUR)"
+      else X="(in_w-1920-$TRAVEL)/2+$TRAVEL*t/$DUR"; fi
       VF="$SCALE,crop=1920:1080:'$X':'(in_h-1080)*$ANCHOR',setsar=1,fps=30,format=yuv420p"
     fi
     ;;
   vpan)
     [ "$DUR_SET" = 1 ] || DUR=8
-    [ -n "$DIR" ] || DIR="up"
+    awk "BEGIN{exit !($HOLD < $DUR)}" 2>/dev/null || { echo "pan_still.sh: --hold ${HOLD}s 必须小于实际 DUR ${DUR}s" >&2; exit 2; }
+    case "$DIR" in up) ;; "") DIR="up";; *) echo "pan_still.sh: WARN --dir ${DIR} 与 vpan 不匹配，改用默认 up" >&2; DIR="up";; esac
     H1=$(awk "BEGIN{printf \"%d\", $H*1920/$W}")
     VMARGIN=$(( H1 - 1080 ))
     if [ "$VMARGIN" -lt 108 ]; then
       echo "pan_still.sh: 竖摇余量只有 ${VMARGIN}px → 退回 static"
-      MODE="static"; DUR=4
+      MODE="static"; [ "$DUR_SET" = 1 ] || DUR=4
       VF="$STATIC_VF"
     else
-      # y 从下往上；起点停 HOLD 秒；顶上留一点（停在 5% 余量处）
-      Y="(in_h-1080)*(1-0.95*min(1\,max(0\,(t-$HOLD)/($DUR-$HOLD))))"
+      # y 从下往上；起点停 HOLD 秒；顶上留 5% 余量；限速时只从底部上移一段
+      VTRAVEL="$(awk "BEGIN{m=$VMARGIN*0.95; c=($DUR-$HOLD)*30*$MAXSPD; printf \"%d\", (m<c?m:c)}")"
+      if [ "$VTRAVEL" -lt $(( VMARGIN * 95 / 100 )) ]; then
+        echo "pan_still.sh: 余量 ${VMARGIN}px 超过限速，只从底部上移 ${VTRAVEL}px（--max-speed ${MAXSPD}）"
+      fi
+      Y="(in_h-1080)-$VTRAVEL*min(1\,max(0\,(t-$HOLD)/($DUR-$HOLD)))"
       VF="scale=1920:-2,crop=1920:1080:0:'$Y',setsar=1,fps=30,format=yuv420p"
     fi
     ;;

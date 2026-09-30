@@ -1,7 +1,7 @@
 ---
 name: personal-vlog-cut
 description: "剪 用户 的个人爬山/旅行/明信片 vlog（ffmpeg 或 ChatCut Desktop）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。Use for personal hike/travel vlog cutting."
-version: 2.5.1
+version: 2.5.2
 ---
 
 # Personal vlog cut
@@ -52,7 +52,7 @@ version: 2.5.1
 |---|---|
 | `scripts/gen_bgm_guitar.py` | 木吉他 BGM（FluidR3_GM 采样 + fluidsynth）：开放和弦，指弹/轻扫交替；`--pattern mix\|finger\|strum\|sparse`、`--guitar steel\|nylon`、`--key`、`--bpm`（默认 96）、`--density`、`--print-chords`、`--midi-out`；需要 fluidsynth 和 `$PVC_SF2` |
 | `scripts/gen_bgm.py` | 合成器垫乐 v3（备用，非默认）（指弹风；`--seed` 必填，`--preset default\|plain\|lively`；内置小三度和音阶自检；`--style quiet` 转调 legacy v2，不推荐） |
-| `scripts/pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4（横摇锁 y 只移 x / 竖摇从下往上；**禁 zoompan**；static 默认 cover，--fit contain 可选） |
+| `scripts/pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4（横摇锁 y 只移 x / 竖摇从下往上；**禁 zoompan**；static 默认 cover，--fit contain 可选；--max-speed 限速（默认 5px/帧）） |
 | `scripts/mix_bgm.sh` | 原声 + 垫乐 sidechain + `alimiter`，输出 `vN_bgm.mp4` 归档母版 |
 | `scripts/mute_segment.sh` | 单切静音（`apad` 到视频时长，音画差 ≤1 帧） |
 | `scripts/export_discord.sh` | 按片长算码率，two-pass 压到约 9MB，超 10MB 自动降码率重试 2 次 的 Discord 发送版（1080p、faststart、ASCII 名），自动体检 |

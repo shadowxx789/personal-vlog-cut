@@ -71,7 +71,7 @@ g. 旧预设不变（金标准，不引用 commit hash）：
 h. 负例（各自退出码必须为 2，并有明确报错）：`--sf2 /nonexistent.sf2`、`--fluidsynth /nonexistent`、`--dur 5`。
 i. 仓库卫生：
    - `git ls-files | grep -i '\.sf2$'` 为空。
-   - 在 CHANGELOG.md 以外 grep `Karplus`，结果为空。
+   - `grep -rn 'Karplu[s]' . --exclude=CHANGELOG.md --exclude-dir=.git`，结果为空。
 j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/strum 各跑 `--seed 7 --dur 60 --print-chords --midi-out`，MIDI 的 MD5 必须分别等于金标准表的 mix/finger/strum 值（完整值）。
 
 ## 链路验证点
@@ -86,87 +86,26 @@ j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/st
 - `1100k`、`zoompan`、`STHeiti`：只允许「禁止/作废」语境出现。
 
 ## 试听件
-- seed 用当天日期，各 60 s，文件名只用 ASCII，通过 MEDIA: 发给用户。
-- 木吉他：
-  - bgm_nylon_finger_lite_s<seed>.wav（`--pattern finger` + `--density 0.5` + `--bpm 88`）
-  - bgm_nylon_sparse_s<seed>.wav（`--pattern sparse` + `--bpm 88`）
-  - bgm_nylon_sparse_slow_s<seed>.wav（`--pattern sparse` + `--bpm 80` + `--density 0.6` + `--reverb 0.5`）
-- 合成器版（default/plain/lively）已在 v2.1.0 试听过，除非用户要求，不重复生成。
-- 默认值由用户试听后决定，agent 不做选择。
+- 默认 BGM 已定（见 preferences.md「当前默认」）。只有会改变声音的修改才出试听件：ASCII 文件名，60 s，seed 用当天日期，改前改后各一版，通过 MEDIA: 发出，由用户决定。
 
-## v2.5.0 验证点（pan_still 帧率/fit、export two-pass、limiter 0.89、wc -c）
+**T9 全景限速。** 10000×1250 的亮度渐变全景图（整幅 YAVG 需要渐变图才能算 dx；沿用 T1 公式，宽度换成 10000），hpan，4 s：
 
-**T1 平移不顿。** 做一张 2400×1080 的横向亮度渐变图，hpan 8 s：
+- dx 均值 ≤ 5.0 px，停帧 0，日志里有"只平移中间"提示。
+- 对照 BASE：dx 均值应约为 56 px。
+- 再用 1600×1200 的图跑一次，确认 dx 仍约为 4 px，没有被限速。
 
-```bash
-ffmpeg -f lavfi -i "color=black:s=2400x1080,geq=lum='X*235/W+16':cb=128:cr=128" -frames:v 1 grad.png
-scripts/pan_still.sh grad.png hpan.mp4 --mode hpan --dur 8   # 参数名以脚本实际为准
-ffmpeg -i hpan.mp4 -vf "signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=yavg.txt" -f null -
-```
+**T10 --dur 保留。** 做一张余量不足的图（比如 1920×1000），`--mode hpan --dur 8`：
 
-判定标准：
+- 输出应为 8 s（240 帧），日志里有"退回 static"。
+- BASE 对照应为 4 s。
 
-- ffprobe 显示 `r_frame_rate=30/1`，帧数 240（±1）。
-- 用整幅画面的 YAVG 反推每帧水平位移 dx。对 2400 宽的渐变图，dx ≈ ΔYAVG × 2400 / 235 像素（渐变为 X*235/W+16，亮度跨度 16→251，共 235），方法沿用 v2.5.0 回报里的算法，并把公式写进 testing.md。
-- 判定：除首尾各 1 帧外，停帧数（|dx| < 0.5 px）为 0；dx 均值落在 2.0±0.1 px；sd/mean < 0.1。
-- BASE 对照：用 v2.4.2 版 pan_still.sh 跑同一测试（任取本地或公开仓），停帧数应约为 40（即 240/6），用来证明测试能抓到这个 bug。
-- 注明：4 列窄窗的 YAVG 受 8-bit 量化影响（0.25 台阶），零差值不代表重复帧，**不要用它做判据**。
+**T11 文件名。** `export_discord.sh src.mp4 /tmp/pvc-test/v252/山行.mp4`：
 
-**T2 static 默认无黑边。** 做一张 1600×1200（4:3）的 testsrc2 图片，static 模式：
+- 输出文件名不以 `.` 开头，stem 非空，check_delivery 全部 PASS。
 
-- 输出为 1920×1080。
-- 最左 4 列和最右 4 列的 YAVG 都 > 30（黑边的 YAVG 约为 16）。
+**T12 mix_bgm 负例。**
 
-**T3 `--fit contain`。** 同一张图加 `--fit contain`：
+- 输入无音轨的视频应 exit 1，并带"mute_segment"提示。
+- 输入 5 s 的片子应 exit 1。
 
-- 最左 4 列的 YAVG ≤ 20（有 pad 黑边）。
-
-**T4 two-pass 不超限。** 生成 240 s 的高噪声素材：
-
-```bash
-ffmpeg -f lavfi -i "testsrc2=s=1920x1080:r=30,noise=alls=40:allf=t" -f lavfi -i "sine=f=440:r=48000" -t 240 -c:v libx264 -crf 18 -c:a aac -ac 2 src240.mp4
-```
-
-跑 export_discord.sh，判定标准：
-
-- exit 0，文件大小 < 上限，check_delivery.sh 全部 PASS。
-- passlog 残留：`find /tmp "$(pwd)" -name '*2pass*' -newer src240.mp4` 结果为空。
-- 贴出实际大小和视频码率。
-
-**T5 重试路径。** 分两种情况：
-
-- 上限设为 `T4 实际大小 × 0.95`（取整字节）。判定：正好 2 次尝试（1 次重试）后成功，exit 0。
-- 另加一条：每次重试的 VBPS 等于上次 × 0.9 取整，日志里逐次可查。
-- 再设一个比 T4 结果小 40% 的值：应当 3 次尝试后 exit 非 0，报错里有每次的大小。追加判定：原交付名的文件不存在，`*_OVERLIMIT.mp4` 存在。
-- 两种情况下 passlog 都不能有残留。
-
-**T6 limiter。** 分四项检查：
-
-- 用 `sine=f=1000` 加 `volume=0dB` 做一条接近满刻度的 BGM wav，和 30 s 的 testsrc2+sine 视频一起跑 mix_bgm.sh。
-- 用 volumedetect 查 `vN_bgm.mp4` 的 max_volume，应当 ≤ −0.5 dB。
-- 再跑 export_discord.sh，check_delivery.sh 的峰值项必须 PASS。
-- 另外用默认木吉他命令生成的 BGM 也混一次，只记录 max_volume，不作判定。
-
-**T7 卫生 + 旧回归。**
-
-- `grep -rn 'stat -f' scripts/` 为空。
-- `grep -rn -- '-loop 1 -i' scripts/ references/`：只允许出现在「片上字幕」的 overlay PNG 示例里。
-- `grep -rn 'limit=0.95'`（CHANGELOG 以外）为空。
-- `shasum -a 256` 校验 gen_bgm.py / gen_bgm_guitar.py / scripts/legacy/gen_bgm_v2.py 都等于金标准表（证明 BGM 代码未动，不引用 commit hash）。
-- 默认 BGM 两条命令复跑，MD5 仍等于金标准表的默认/备选值。
-- testing.md 原有的全部验证点再完整跑一遍（mute_segment、check_delivery、pan_still 原有项等）。
-
-**T8 负例：FAIL 分支不崩（bash 3.2 全角变量名）。**
-
-```bash
-ffmpeg -f lavfi -i "testsrc2=s=1920x1080:r=30" -f lavfi -i "sine=f=440:r=48000" -t 5 \
-  -vf "setsar=4/3,format=yuv444p" -c:v libx264 -profile:v high444 -c:a aac bad.mp4
-scripts/check_delivery.sh bad.mp4 > t8.log 2>&1; echo "exit=$?"
-```
-
-判定：
-
-- exit 非 0。
-- t8.log 里 SAR 和 pix_fmt（或 profile）两项都打印出带实际值的 FAIL 行。
-- t8.log 里不出现 `unbound variable`。
-- 再用 BASE 版的 check_delivery.sh 跑同一素材作对照，预期会出现 `unbound variable`，或 FAIL 行缺值。贴出对照结果。
+**T13 HEIC。** `sips -s format heic test.png --out test.heic` 生成测试图，pan_still static 能出 1920×1080 的片子。没有 sips 的环境记为 SKIP。
