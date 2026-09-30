@@ -32,7 +32,7 @@
 | `pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4：横摇锁 y 只移 x、竖摇从下往上、EXIF 方向校正、余量不足自动退 static；static 默认 cover（裁满），--fit contain 可选；--max-speed 限速（默认 10px/帧） |
 | `mix_bgm.sh` | 原声 + 垫乐 sidechain 混音（末尾 `alimiter` 防削波），输出归档母版 `vN_bgm.mp4` |
 | `mute_segment.sh` | 单切静音：`apad` 到视频时长，音画时长差 ≤ 1 帧 |
-| `export_discord.sh` | 按片长自动算码率，two-pass 压到约 9MB，超 10MB 自动降码率重试 2 次、1080p、文件名强制 ASCII；超限输出改名 _OVERLIMIT |
+| `export_discord.sh` | 按片长自动算码率，two-pass 压到约 9MB，超 10MB 自动降码率重试 2 次、1080p、非 ASCII 文件名确定性改写（残留 ASCII + cksum 哈希）；超限输出改名 _OVERLIMIT |
 | `check_delivery.sh` | 交付前体检（SAR/DAR/色深/峰值等逐项 PASS/FAIL）+ 均匀抽 6 帧接触表 |
 
 所有脚本都有 `--help`；出错返回非零并打印原因，不静默出空文件。
@@ -48,3 +48,6 @@
 ## 测试
 
 改过 `scripts/` 后按 `references/testing.md` 跑回归：全部用 ffmpeg 合成素材（`testsrc2` / `sine` / `anullsrc`）在临时目录验证，不碰真实素材、移动硬盘、网盘。
+
+- 判定值以 testing.md 开头的**金标准表**为准（BGM 脚本 sha256、WAV/MIDI 的 MD5 写死全文）；本地仓与公开仓 commit hash 不同，测试一律不引用 hash。
+- 当前验证点：T1–T14（平移平滑度与限速、cover/contain、two-pass 与超限改名、热信号限幅、卫生扫描、金标准比对、参数校验等），含负例。
