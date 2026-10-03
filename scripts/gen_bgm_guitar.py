@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_bgm_guitar.py v1.2.0 — 木吉他 BGM：程序作曲 → MIDI → fluidsynth + SoundFont 采样渲染
+gen_bgm_guitar.py v1.2.1 — 木吉他 BGM：程序作曲 → MIDI → fluidsynth + SoundFont 采样渲染
 personal-vlog-cut 专用。与 gen_bgm.py（合成器 v3）完全独立，不影响其输出。
 
 依赖：numpy（仅渲染时）；fluidsynth 2.x；GM SoundFont（默认 FluidR3_GM.sf2，MIT）
@@ -32,7 +32,7 @@ import time
 import wave
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 SR = 48000
 PEAK = 0.70          # ≈ -3.1 dBFS
 PPQ = 480
@@ -225,9 +225,12 @@ def plan_wander(dur, bpm, seed):
 
 
 class WanderCtx:
-    def __init__(self, seed, shift, bars):
+    def __init__(self, seed, shift, bars, dens=0.85):
         self.rng = _wander_rng(seed, 1)
         self.shift = shift
+        self.dens = dens
+        skip = 0.20 + (0.85 - dens) * 0.5
+        self.skip_p = min(0.60, max(0.20, skip))
         self.pool = _penta_pool(shift)
         self.last_grids = []
         self.cur_grid = WANDER_GRIDS[0]
@@ -361,7 +364,7 @@ class WanderCtx:
                     pitch = min(pool, key=lambda m: abs(m - pitch))
                 placed[bi].append((bt, pitch))
             for bi, notes in placed.items():
-                if self.rng.random() < 0.20:
+                if self.rng.random() < self.skip_p:
                     continue
                 notes = sorted(notes)[:2]
                 if notes:
@@ -406,7 +409,7 @@ def wander_bar(p, t0, beats, v, root, wctx, accent):
                 cells.append((cand, ("tre",)))
                 taken.add(cand)
                 break
-        if wctx.rng.random() < 0.45:
+        if wctx.rng.random() < 0.45 * wctx.dens / 0.85:
             for cand in (1, 3, 5, 7):
                 if cand not in taken:
                     cells.append((cand, ("alt",)))
@@ -420,9 +423,11 @@ def wander_bar(p, t0, beats, v, root, wctx, accent):
             p.play(p.hum(t), s, n, vel)
 
 
-def wander_melody(p, t_bar, bar, wctx):
+def wander_melody(p, t_bar, bar, wctx, seg_pos, seg_beats):
     for beat, pitch in wctx.mel.get(bar, []):
-        mt = t_bar + beat * p.beat + 0.012
+        if not (seg_pos <= beat < seg_pos + seg_beats):
+            continue
+        mt = t_bar + beat * p.beat
         vel = int(48 + getattr(wctx, "cur_bias", 0) * 0.3)
         p.play(mt, 5, pitch, vel)
 
@@ -581,7 +586,7 @@ def breath(p, t0, beats, v, slow=0.075, vel=56, extra=True):
 
 def perform(bars, bpm, shift, dens, seed, dur):
     p = Perf(seed, bpm)
-    wctx = WanderCtx(seed, shift, bars) if any(b["kind"] == "wander" for b in bars) else None
+    wctx = WanderCtx(seed, shift, bars, dens) if any(b["kind"] == "wander" for b in bars) else None
     bar_sec = 4 * p.beat
     for b in bars:
         pos = 0.0
@@ -595,8 +600,7 @@ def perform(bars, bpm, shift, dens, seed, dur):
             kind = b["kind"]
             if kind == "wander":
                 wander_bar(p, t0, beats, v, root, wctx, accent)
-                if accent:
-                    wander_melody(p, LEAD + b["bar"] * bar_sec, b["bar"], wctx)
+                wander_melody(p, LEAD + b["bar"] * bar_sec, b["bar"], wctx, pos, beats)
             elif kind == "finger":
                 travis(p, t0, beats, v, root, dens, accent)
             elif kind == "sparse":

@@ -11,7 +11,7 @@
 | 项目 | 金标准值 |
 |---|---|
 | `scripts/gen_bgm.py` sha256（v3.0.0） | `979a02f9c0e0cd743b310173b1fa99fca2ef70f572c63c7f5b0fc97a511a80f7` |
-| `scripts/gen_bgm_guitar.py` sha256（v1.2.0） | `2d30c87dd18c8e6e1c6da26f3bc7ba95577ffbe378fbd9cc1d0c345d1fd4fa2e` |
+| `scripts/gen_bgm_guitar.py` sha256（v1.2.1） | `bc6b371a00467a47627c8ec116b0d2cb45802b3ae3e91f000f3ec31633570664` |
 | `scripts/legacy/gen_bgm_v2.py` sha256 | `dc2c3c810dd3df144f9942796a1224ed1000ea369e6909ac137eb4840a58bb7e` |
 | gen_bgm default（seed 1，dur 60）WAV md5 | `3d4043a9dad21e6f2dd6bcd900ce3a84` |
 | gen_bgm plain（seed 1，dur 60）WAV md5 | `032ac7baa1f78adbdfbec56247cb7f1a` |
@@ -72,13 +72,17 @@ h. 负例（各自退出码必须为 2，并有明确报错）：`--sf2 /nonexis
 i. 仓库卫生：
    - `git ls-files | grep -i '\.sf2$'` 为空。
    - `grep -rn 'Karplu[s]' . --exclude=CHANGELOG.md --exclude-dir=.git`，结果为空。
+   - `git ls-files | grep -E '\.pyc$|__pycache__'` 为空。
 j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/strum 各跑 `--seed 7 --dur 60 --print-chords --midi-out`，MIDI 的 MD5 必须分别等于金标准表的 mix/finger/strum 值（完整值）。
 k. wander 验证点：
    - k1 可复现：同 seed 两次 MIDI MD5 相同；seed 1 与 seed 2 不同。
-   - k2 不重复：seed 20260929、dur 120 时，相邻小节不完全相同（起音位置 + 音高序列都一样才算相同），相同的为 0 处；全部 2 小节窗口里，不同窗口的占比 ≥ 0.85。sparse 在同样条件下的占比也要算出来作对照。
-   - k3 旋律规则：所有旋律音都在五声音阶内、落在 62–76；强拍上的旋律音 100% 是和弦音。
+   - k2 量化后比较（起音对齐到八分音符格子，忽略力度和人性化偏移）：
+     - k2a 节奏骨架：每小节签名 = 起音格位集合（0–7）。seed 20260929、dur 120，分别报告 wander 和 sparse 的不同签名数、相邻小节签名相同的占比。判据：wander 不同签名 ≥ 8，相邻相同 ≤ 25%；并且两项都要明显优于 sparse。sparse 若也达标，报告口径问题，不许改阈值。
+     - k2b 顶线：每个格位取最高音，组成序列，按 4 小节一窗滑动。报告 wander 和 sparse 的不同窗口占比。判据：wander ≥ 0.90，且高于 sparse。
+   - k3 旋律规则：所有旋律音都在五声音阶内、落在 62–76；强拍上的旋律音 100% 是和弦音。每个旋律音时长 ≥ 0.15 s（用来抓 5ms 残音）；报告旋律音总数，并与修复前的 34 对照。
    - k4 密度：dur 180 的音符数在 sparse（347）的 1.0–1.5 倍之间。
    - k5 规格：沿用 f 的规格检查（48k/2ch/s16、峰值约 −3.1 dB、尾部 < −25 dB）。
+   - k6 density：同 seed，`--density 0.6` 的音符数 < `0.85` 的音符数。
 
 ## 链路验证点
 

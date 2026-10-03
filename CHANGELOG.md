@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v2.6.1 (2026-10-03)
+- wander：拆分小节第 3、4 拍的旋律音被换和弦时的 damp_all 截成 5ms，改为按段排音。
+- wander 接上 --density。
+- k2 改为量化后比较（原口径因人性化偏移，sparse 也是 1.00，无效）；k3 加旋律音时长下限。
+- 移除误提交的 __pycache__，并加入 .gitignore。
 ## v2.6.0 (2026-10-03)
 - 新增 `--pattern wander`：一阶马尔可夫和弦 + 独立旋律层 + 不循环的稀疏节奏格子，解决 sparse 旋律由和弦决定、节奏每小节相同、PROGS 只有 5 套 4 小节句的重复感。保持安静留白。
 - 旧 pattern（mix/finger/strum/sparse）输出不变：MIDI MD5 mix/finger/strum 与默认/备选 WAV MD5 全中金标准。
