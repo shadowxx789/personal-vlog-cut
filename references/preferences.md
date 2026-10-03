@@ -66,13 +66,14 @@
   - 脚本自带默认 `--pattern mix`（不是用户选定方案）：每 8 小节在 Travis 指弹与轻扫（下·下上·上下上）之间切换；每段第 8 小节"喘口气"，只慢拨一次；结尾 A→D 慢拨收尾；96 BPM。
   - 人味化：±15ms 时值偏差、力度抖动、扫弦逐弦错开。
   - 变体：`--pattern finger`（全程指弹，最安静）、`--guitar nylon`（尼龙弦，更柔）、`--pattern sparse`（稀疏指弹，每小节 2–5 个音，余音延续；配 --guitar nylon 使用）。
-- 当前默认 = 木吉他尼龙弦稀疏（v2.4.0 试听选定）：
-  - 默认：`python scripts/gen_bgm_guitar.py --seed <日期> --dur <成片秒数+2> --guitar nylon --pattern sparse --bpm 88 --out bgm.wav`
-  - 备选（安静）：`python scripts/gen_bgm_guitar.py --seed <日期> --dur <成片秒数+2> --guitar nylon --pattern sparse --bpm 80 --density 0.6 --reverb 0.5 --out bgm.wav`
+- 当前默认 = 木吉他尼龙弦 wander（v2.6.1 试听选定）：
+  - 默认：`python scripts/gen_bgm_guitar.py --seed <日期> --dur <片长+2> --guitar nylon --pattern wander --bpm 88 --out bgm.wav`
+  - 安静场景备选：`python scripts/gen_bgm_guitar.py --seed <日期> --dur <片长+2> --guitar nylon --pattern wander --bpm 80 --density 0.6 --reverb 0.5 --out bgm.wav`
+  - 回退（嫌旋律抢人声时）：把上面两条的 `--pattern wander` 换成 `--pattern sparse`（即 v2.4.1 的旧默认）。
   - 什么时候用备选：旁白占成片一半以上、夜景、风景空镜为主，或者用户说"安静点"。其余情况一律用默认。
   - 这两条命令的参数必须写全，不要依赖脚本的默认值（脚本默认值是 steel/mix，不是用户选定的方案）。
-- 试听中：--pattern wander（v2.6.0，旋律会变化、节奏不循环），待用户定。
-- 抢旁白时：先换「当前默认」里的备选命令；仍不够，再把 mix_bgm.sh 的 BGM 音量降 2 dB。不要换 finger（比 sparse 密），也不要换回合成器 plain。
+- 用户反馈（v2.6.1 试听）：wander 满意，替换 sparse 为默认；sparse 降为回退。
+- 抢旁白时：先用备选 → 再把 BGM 降 2 dB → 还不行就回退到 sparse。
 - 不要：物理建模合成的木吉他（v2.2.0 的 acoustic 预设，试听判定不可用，已撤回，详见 CHANGELOG）。
 - 用户反馈（v2.3.0 试听）：尼龙弦最好，但 mix 太密、太热闹 → 往稀疏方向调。
 - 用户反馈（v2.4.0 试听）：sparse 和 sparse_slow 都满意；finger_lite 仍偏密。合成器版 default/plain/lively 保留，但不再作为默认。

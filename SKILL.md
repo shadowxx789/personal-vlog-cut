@@ -1,7 +1,7 @@
 ---
 name: personal-vlog-cut
 description: "剪 用户 的个人爬山/旅行/明信片 vlog（ffmpeg 或 ChatCut Desktop）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。Use for personal hike/travel vlog cutting."
-version: 2.6.1
+version: 2.6.2
 ---
 
 # Personal vlog cut
@@ -27,7 +27,7 @@ version: 2.6.1
 - **地名听用户的**，不用素材文件夹/文件名。
 - 放慢阶梯：**0.65–0.7x → 0.5x → 0.4x**，`setpts` 不插帧。
 - 照片默认 **4s**；开场那张要让音乐先出来时约 **8s**。
-- BGM：大调、稀疏、不诡异不呜呜；垫乐 `volume` **0.72**，口播段 **−22dB**；每天换 seed。生成命令按 preferences.md「当前默认」（木吉他尼龙弦 sparse，D 调），安静场景用备选；不要依赖脚本默认值。
+- BGM：大调、稀疏、不诡异不呜呜；垫乐 `volume` **0.72**，口播段 **−22dB**；每天换 seed。生成命令按 preferences.md「当前默认」（木吉他尼龙弦 wander，D 调），安静场景用备选；不要依赖脚本默认值。
 - 不要地理论文、机身参数、摄影哲学、「感谢大自然」。Discord：短句短段、结论先行。
 
 完整清单（字幕位置、字体、BGM 口味、镜头取舍）：见 [references/preferences.md](references/preferences.md)。
@@ -50,7 +50,7 @@ version: 2.6.1
 
 | 脚本 | 干什么 |
 |---|---|
-| `scripts/gen_bgm_guitar.py` | 木吉他 BGM（FluidR3_GM 采样 + fluidsynth）：开放和弦，指弹/轻扫交替；`--pattern mix\|finger\|strum\|sparse\|wander`、`--guitar steel\|nylon`、`--key`、`--bpm`（默认 96）、`--density`、`--print-chords`、`--midi-out`；需要 fluidsynth 和 `$PVC_SF2` |
+| `scripts/gen_bgm_guitar.py` | 木吉他 BGM（FluidR3_GM 采样 + fluidsynth）：开放和弦，指弹/轻扫交替；`--pattern mix\|finger\|strum\|sparse\|wander`（**默认 wander**）、`--guitar steel\|nylon`、`--key`、`--bpm`（默认 96）、`--density`、`--print-chords`、`--midi-out`；需要 fluidsynth 和 `$PVC_SF2` |
 | `scripts/gen_bgm.py` | 合成器垫乐 v3（备用，非默认）（指弹风；`--seed` 必填，`--preset default\|plain\|lively`；内置小三度和音阶自检；`--style quiet` 转调 legacy v2，不推荐） |
 | `scripts/pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4（横摇锁 y 只移 x / 竖摇从下往上；**禁 zoompan**；static 默认 cover，--fit contain 可选；--max-speed 限速（默认 10px/帧）） |
 | `scripts/mix_bgm.sh` | 原声 + 垫乐 sidechain + `alimiter`，输出 `vN_bgm.mp4` 归档母版 |

@@ -19,8 +19,10 @@
 | gen_bgm_guitar mix（seed 7，dur 60）MIDI md5 | `512d615a8b64351d0d5c0b4cb5e652ae` |
 | gen_bgm_guitar finger（seed 7，dur 60）MIDI md5 | `d275b45255380c957eac7f16923afff6` |
 | gen_bgm_guitar strum（seed 7，dur 60）MIDI md5 | `2f2d8dd6f1b901e57c5cb5deb98b1798` |
-| 默认 BGM（nylon sparse 88，seed 20260929，dur 60）WAV md5 | `4f0547731ef7c15112377bc494537b61` |
-| 备选 BGM（nylon sparse 80 / density 0.6 / reverb 0.5，seed 20260929，dur 60）WAV md5 | `96bf2aa32f62954ec52e9226dcf12549` |
+| 旧默认（sparse）（nylon sparse 88，seed 20260929，dur 60）WAV md5 | `4f0547731ef7c15112377bc494537b61` |
+| 旧备选（sparse）（nylon sparse 80 / density 0.6 / reverb 0.5，seed 20260929，dur 60）WAV md5 | `96bf2aa32f62954ec52e9226dcf12549` |
+| 默认 BGM（nylon wander 88，seed 20260929，dur 60）WAV md5 | `7baa87fc01f56ffa76daa650dd9d977c` |
+| 备选 BGM（nylon wander 80 / density 0.6 / reverb 0.5，seed 20260929，dur 60）WAV md5 | `b072775225afde18dd86e0d6e2602d3f` |
 
 ## 素材合成（先造图，再跑脚本）
 
@@ -77,8 +79,8 @@ j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/st
 k. wander 验证点：
    - k1 可复现：同 seed 两次 MIDI MD5 相同；seed 1 与 seed 2 不同。
    - k2 量化后比较（起音对齐到八分音符格子，忽略力度和人性化偏移）：
-     - k2a 节奏骨架：每小节签名 = 起音格位集合（0–7）。seed 20260929、dur 120，分别报告 wander 和 sparse 的不同签名数、相邻小节签名相同的占比。判据：wander 不同签名 ≥ 8，相邻相同 ≤ 25%；并且两项都要明显优于 sparse。sparse 若也达标，报告口径问题，不许改阈值。
-     - k2b 顶线：每个格位取最高音，组成序列，按 4 小节一窗滑动。报告 wander 和 sparse 的不同窗口占比。判据：wander ≥ 0.90，且高于 sparse。
+     - k2a 节奏骨架：每小节签名 = 起音格位集合（0–7）。seed 20260929、dur 120，分别报告 wander 和 sparse 的不同签名数、相邻小节签名相同的占比。判据（相对 sparse）：wander 不同签名数 ≥ sparse × 2，并且 wander 相邻相同占比 ≤ sparse × 0.5。绝对门槛（≥8 / ≤25%）已删——sparse 也能过，挡不住旧问题。
+     - k2b 顶线：每个格位取最高音，组成序列，按 4 小节一窗滑动。照常报告 wander 和 sparse 的不同窗口占比，**不判 PASS/FAIL**（4 小节顶线窗口两边都饱和到 1.00，没有区分度）。
    - k3 旋律规则：所有旋律音都在五声音阶内、落在 62–76；强拍上的旋律音 100% 是和弦音。每个旋律音时长 ≥ 0.15 s（用来抓 5ms 残音）；报告旋律音总数，并与修复前的 34 对照。
    - k4 密度：dur 180 的音符数在 sparse（347）的 1.0–1.5 倍之间。
    - k5 规格：沿用 f 的规格检查（48k/2ch/s16、峰值约 −3.1 dB、尾部 < −25 dB）。

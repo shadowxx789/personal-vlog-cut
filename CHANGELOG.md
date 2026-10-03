@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v2.6.2 (2026-10-03)
+- 用户试听选定：默认 BGM = nylon wander 88；备选 = wander 80 / density 0.6 / reverb 0.5；sparse 降为回退。
+- k2a 改为相对 sparse 判定，k2b 降为只记录（v2.6.1 回报的两处口径问题）。
+- 纯文档改动，scripts/ 未动。
 ## v2.6.1 (2026-10-03)
 - wander：拆分小节第 3、4 拍的旋律音被换和弦时的 damp_all 截成 5ms，改为按段排音。
 - wander 接上 --density。

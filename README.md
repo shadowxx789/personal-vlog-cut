@@ -1,6 +1,6 @@
 # personal-vlog-cut
 
-> 剪个人爬山 / 旅行 / 明信片 vlog 的 agent skill（v2.6.1）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。
+> 剪个人爬山 / 旅行 / 明信片 vlog 的 agent skill（v2.6.2）：看素材先分析、粗剪、按秒数重剪、生成与混垫乐、烧手札字幕、写小红书文案、发 Discord、传夸克归档。
 >
 > **本仓库是脱敏公开版**：执行规则与本地使用版完全一致，仅地名与家人称谓做了泛化；带真实案例的踩坑实录留在本地，不公开。
 
@@ -27,7 +27,7 @@
 
 | 脚本 | 用途 |
 |---|---|
-| `gen_bgm_guitar.py` | 木吉他 BGM，SoundFont 采样渲染（依赖 fluidsynth 与 FluidR3_GM.sf2，音色文件不在仓库内，见 references/third-party.md）；`--pattern mix/finger/strum/sparse/wander`；**当前默认 BGM** |
+| `gen_bgm_guitar.py` | 木吉他 BGM，SoundFont 采样渲染（依赖 fluidsynth 与 FluidR3_GM.sf2，音色文件不在仓库内，见 references/third-party.md）；`--pattern mix/finger/strum/sparse/wander`（**默认 wander**）；**当前默认 BGM** |
 | `gen_bgm.py` | 生成原创垫乐 v3：`--seed` 必填（同 seed 可复现）；`--preset default\|plain\|lively`（合成指弹风）；只用大调/挂留和弦，内置音阶自检；旧 v2 在 `scripts/legacy/` |
 | `pan_still.sh` | 静帧 → 16:9 1080p 运镜 mp4：横摇锁 y 只移 x、竖摇从下往上、EXIF 方向校正、余量不足自动退 static；static 默认 cover（裁满），--fit contain 可选；--max-speed 限速（默认 10px/帧） |
 | `mix_bgm.sh` | 原声 + 垫乐 sidechain 混音（末尾 `alimiter` 防削波），输出归档母版 `vN_bgm.mp4` |
