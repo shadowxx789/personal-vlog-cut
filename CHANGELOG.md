@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v2.6.0 (2026-10-03)
+- 新增 `--pattern wander`：一阶马尔可夫和弦 + 独立旋律层 + 不循环的稀疏节奏格子，解决 sparse 旋律由和弦决定、节奏每小节相同、PROGS 只有 5 套 4 小节句的重复感。保持安静留白。
+- 旧 pattern（mix/finger/strum/sparse）输出不变：MIDI MD5 mix/finger/strum 与默认/备选 WAV MD5 全中金标准。
+- 默认 BGM 暂不切换，等用户试听。
 ## v2.5.5 (2026-09-30)
 - pan_still 选项缺值报 exit 2。
 - T9 dx 宽度改为 8640（原写 10000 有误，实测已用 8640）。

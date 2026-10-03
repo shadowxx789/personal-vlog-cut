@@ -71,6 +71,7 @@
   - 备选（安静）：`python scripts/gen_bgm_guitar.py --seed <日期> --dur <成片秒数+2> --guitar nylon --pattern sparse --bpm 80 --density 0.6 --reverb 0.5 --out bgm.wav`
   - 什么时候用备选：旁白占成片一半以上、夜景、风景空镜为主，或者用户说"安静点"。其余情况一律用默认。
   - 这两条命令的参数必须写全，不要依赖脚本的默认值（脚本默认值是 steel/mix，不是用户选定的方案）。
+- 试听中：--pattern wander（v2.6.0，旋律会变化、节奏不循环），待用户定。
 - 抢旁白时：先换「当前默认」里的备选命令；仍不够，再把 mix_bgm.sh 的 BGM 音量降 2 dB。不要换 finger（比 sparse 密），也不要换回合成器 plain。
 - 不要：物理建模合成的木吉他（v2.2.0 的 acoustic 预设，试听判定不可用，已撤回，详见 CHANGELOG）。
 - 用户反馈（v2.3.0 试听）：尼龙弦最好，但 mix 太密、太热闹 → 往稀疏方向调。

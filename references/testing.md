@@ -11,7 +11,7 @@
 | 项目 | 金标准值 |
 |---|---|
 | `scripts/gen_bgm.py` sha256（v3.0.0） | `979a02f9c0e0cd743b310173b1fa99fca2ef70f572c63c7f5b0fc97a511a80f7` |
-| `scripts/gen_bgm_guitar.py` sha256（v1.1.0） | `0bd4114bcec3bb919a6bf7355d286bddd75eca401d3c85751f12d93208a94426` |
+| `scripts/gen_bgm_guitar.py` sha256（v1.2.0） | `2d30c87dd18c8e6e1c6da26f3bc7ba95577ffbe378fbd9cc1d0c345d1fd4fa2e` |
 | `scripts/legacy/gen_bgm_v2.py` sha256 | `dc2c3c810dd3df144f9942796a1224ed1000ea369e6909ac137eb4840a58bb7e` |
 | gen_bgm default（seed 1，dur 60）WAV md5 | `3d4043a9dad21e6f2dd6bcd900ce3a84` |
 | gen_bgm plain（seed 1，dur 60）WAV md5 | `032ac7baa1f78adbdfbec56247cb7f1a` |
@@ -58,7 +58,7 @@
 
 a. 依赖：`fluidsynth --version` 有输出；`$PVC_SF2` 存在；记录 sha256，并与 references/third-party.md 一致。
 b. 作曲可复现：`--seed 1 --dur 60 --print-chords` 连跑两次，diff 为空；`--seed 2` 的输出与 seed 1 不同。
-c. 自检矩阵：seed 1–5 × pattern mix/finger/strum/sparse × key C/D/G，共 60 次 `--print-chords`，全部退出码 0。
+c. 自检矩阵：seed 1–5 × pattern mix/finger/strum/sparse/wander × key C/D/G，共 75 次 `--print-chords`，全部退出码 0。
 d. MIDI 可复现：`--seed 7 --dur 60 --print-chords --midi-out x.mid` 连跑两次，MD5 相同。另外完整渲染两次，WAV 的 MD5 是否相同仅作参考记录，不计 FAIL。
 e. 性能：`--seed 1 --dur 180 --out long.wav` 耗时 ≤ 15 s，记录实际秒数；stderr 中不得出现"削波"WARN。
 f. 规格（针对 long.wav）：
@@ -73,6 +73,12 @@ i. 仓库卫生：
    - `git ls-files | grep -i '\.sf2$'` 为空。
    - `grep -rn 'Karplu[s]' . --exclude=CHANGELOG.md --exclude-dir=.git`，结果为空。
 j. 旧 pattern 不变（金标准，不引用 commit hash）：对 mix/finger/strum 各跑 `--seed 7 --dur 60 --print-chords --midi-out`，MIDI 的 MD5 必须分别等于金标准表的 mix/finger/strum 值（完整值）。
+k. wander 验证点：
+   - k1 可复现：同 seed 两次 MIDI MD5 相同；seed 1 与 seed 2 不同。
+   - k2 不重复：seed 20260929、dur 120 时，相邻小节不完全相同（起音位置 + 音高序列都一样才算相同），相同的为 0 处；全部 2 小节窗口里，不同窗口的占比 ≥ 0.85。sparse 在同样条件下的占比也要算出来作对照。
+   - k3 旋律规则：所有旋律音都在五声音阶内、落在 62–76；强拍上的旋律音 100% 是和弦音。
+   - k4 密度：dur 180 的音符数在 sparse（347）的 1.0–1.5 倍之间。
+   - k5 规格：沿用 f 的规格检查（48k/2ch/s16、峰值约 −3.1 dB、尾部 < −25 dB）。
 
 ## 链路验证点
 

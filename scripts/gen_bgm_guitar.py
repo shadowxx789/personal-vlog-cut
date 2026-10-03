@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_bgm_guitar.py v1.1.0 — 木吉他 BGM：程序作曲 → MIDI → fluidsynth + SoundFont 采样渲染
+gen_bgm_guitar.py v1.2.0 — 木吉他 BGM：程序作曲 → MIDI → fluidsynth + SoundFont 采样渲染
 personal-vlog-cut 专用。与 gen_bgm.py（合成器 v3）完全独立，不影响其输出。
 
 依赖：numpy（仅渲染时）；fluidsynth 2.x；GM SoundFont（默认 FluidR3_GM.sf2，MIT）
@@ -12,6 +12,7 @@ SoundFont：给了 --sf2 就只用它（不存在即报错退出 2）；否则�
   python gen_bgm_guitar.py --seed 1 --dur 60 --out a.wav --pattern finger # 全程指弹
   python gen_bgm_guitar.py --seed 1 --dur 60 --out a.wav --guitar nylon   # 尼龙弦
   python gen_bgm_guitar.py --seed 1 --dur 60 --out a.wav --guitar nylon --pattern sparse --bpm 88  # 稀疏
+  python gen_bgm_guitar.py --seed 1 --dur 60 --out a.wav --guitar nylon --pattern wander --bpm 88  # 漫游
   python gen_bgm_guitar.py --seed 1 --dur 60 --print-chords               # 只作曲+自检（无需 numpy/fluidsynth）
   python gen_bgm_guitar.py --seed 1 --dur 60 --print-chords --midi-out a.mid
 
@@ -31,7 +32,7 @@ import time
 import wave
 from pathlib import Path
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 SR = 48000
 PEAK = 0.70          # ≈ -3.1 dBFS
 PPQ = 480
@@ -96,8 +97,340 @@ def voicing(name, shift):
     return [(i, OPEN[i] + f + shift) for i, f in enumerate(SHAPES[name]) if f is not None]
 
 
+# ---------------------------------------------------------------- wander（独立 rng，不进入旧 pattern 路径）
+WANDER_FAM = {
+    "D": ("D", "D/F#", "Dmaj7", "D6"),
+    "G": ("G", "G/B", "Gadd9"),
+    "A": ("A", "A/C#", "Asus4"),
+}
+WANDER_FAM_OF = {n: f for f, ns in WANDER_FAM.items() for n in ns}
+WANDER_FAM_TRANS = {
+    "D": (("G", 4), ("A", 3), ("D", 2)),
+    "G": (("D", 4), ("A", 3), ("G", 2)),
+    "A": (("D", 4), ("G", 3), ("A", 2)),
+}
+WANDER_GRIDS = (
+    ((0, ("root",)), (4, ("fifth",))),
+    ((0, ("root",)), (3, ("tre",)), (6, ("alt",))),
+    ((0, ("root", "fifth")), (4, ("tre",))),
+    ((0, ("root",)), (2, ("alt",)), (5, ("tre",))),
+    ((0, ("root",)), (6, ("tre",))),
+    ((0, ("root",)), (3, ("alt",)), (7, ("tre",))),
+    ((0, ("root", "tre")), (4, ("fifth",))),
+    ((0, ("root",)), (2, ("fifth",)), (5, ("alt",))),
+)
+
+
+def _wander_rng(seed, stream=0):
+    return random.Random(seed * 104729 + 3 + stream * 9973)
+
+
+def _w_pick_fam(rng, prev_fam):
+    opts = WANDER_FAM_TRANS[prev_fam]
+    tot = sum(w for _, w in opts)
+    x = rng.randrange(tot)
+    acc = 0
+    for f, w in opts:
+        acc += w
+        if x < acc:
+            return f
+    return opts[-1][0]
+
+
+def _w_pick_chord(rng, fam, banned):
+    opts = [n for n in WANDER_FAM[fam] if n not in banned]
+    if not opts:
+        opts = list(WANDER_FAM[fam])
+    return rng.choice(opts)
+
+
+def _penta_pool(shift):
+    pcs = {(2 + shift + d) % 12 for d in (0, 2, 4, 7, 9)}
+    return [m for m in range(62, 77) if m % 12 in pcs]
+
+
+def _chord_pcs(name, shift):
+    return {n % 12 for _, n in voicing(name, shift)}
+
+
+def _snap_chord_tone(pitch, name, shift, pool):
+    pcs = _chord_pcs(name, shift)
+    cands = [m for m in pool if m % 12 in pcs]
+    if not cands:
+        return pitch
+    return min(cands, key=lambda m: (abs(m - pitch), m))
+
+
+def _chord_at_beat(segs, beat):
+    pos = 0.0
+    last = segs[0][0]
+    for name, beats in segs:
+        if beat < pos + beats - 1e-9:
+            return name
+        pos += beats
+        last = name
+    return last
+
+
+def plan_wander(dur, bpm, seed):
+    rng = _wander_rng(seed, 0)
+    bar = 240.0 / bpm
+    n = int((dur - LEAD - TAIL) // bar)
+    if n < 3:
+        die(f"--dur 太短：当前 BPM 下至少需要 {LEAD + TAIL + 3 * bar:.1f}s")
+    body = n - 1
+    seq = []
+    prev_name = "D"
+    prev_fam = "D"
+    run = 0
+    for i in range(body - 1):
+        banned = [prev_name] if run >= 2 else []
+        fam = _w_pick_fam(rng, prev_fam)
+        name = _w_pick_chord(rng, fam, banned)
+        if name == prev_name:
+            run += 1
+        else:
+            run = 1
+        if rng.random() < 0.25:
+            fam2 = _w_pick_fam(rng, WANDER_FAM_OF[name])
+            name2 = _w_pick_chord(rng, fam2, [name])
+            segs = [(name, 2), (name2, 2)]
+            prev_name, prev_fam, run = name2, WANDER_FAM_OF[name2], 1
+        else:
+            segs = [(name, 4)]
+            prev_name, prev_fam = name, WANDER_FAM_OF[name]
+        seq.append(segs)
+        if (i + 1) % 4 == 0 and i + 1 >= 8:
+            a = tuple(tuple(s) for s in seq[i - 7:i - 3])
+            b = tuple(tuple(s) for s in seq[i - 3:i + 1])
+            if a == b:
+                fam = _w_pick_fam(rng, prev_fam)
+                name = _w_pick_chord(rng, fam, [prev_name])
+                seq[i] = [(name, 4)]
+                prev_name, prev_fam, run = name, WANDER_FAM_OF[name], 1
+    seq.append([tuple(x) for x in PENULT])
+    breaths = {0}
+    t = 0
+    while True:
+        t += rng.randint(6, 10)
+        if t >= body - 1:
+            break
+        breaths.add(t)
+    bars = []
+    for i, segs in enumerate(seq):
+        kind = "breath" if i in breaths else "wander"
+        bars.append({"bar": i, "kind": kind, "segs": [list(s) for s in segs]})
+    bars.append({"bar": body, "kind": "ending", "segs": [[ENDING, 4]]})
+    return bars
+
+
+class WanderCtx:
+    def __init__(self, seed, shift, bars):
+        self.rng = _wander_rng(seed, 1)
+        self.shift = shift
+        self.pool = _penta_pool(shift)
+        self.last_grids = []
+        self.cur_grid = WANDER_GRIDS[0]
+        self.cur_bias = 0
+        self.arc_len = self.rng.randint(8, 12)
+        self.arc_i = 0
+        self.arc_amp = 5 if self.rng.random() < 0.5 else -5
+        self.mel = {}
+        self._plan_melody(bars)
+
+    def vel_bias(self):
+        t = self.arc_i / float(self.arc_len)
+        bias = self.arc_amp * math.sin(math.pi * t)
+        self.arc_i += 1
+        if self.arc_i >= self.arc_len:
+            self.arc_i = 0
+            self.arc_len = self.rng.randint(8, 12)
+            self.arc_amp = -self.arc_amp
+        return bias
+
+    def pick_grid(self):
+        n = len(WANDER_GRIDS)
+        idx = self.rng.randrange(n)
+        if len(self.last_grids) >= 2 and self.last_grids[-1] == idx and self.last_grids[-2] == idx:
+            opts = [i for i in range(n) if i != idx]
+            idx = opts[self.rng.randrange(len(opts))]
+        self.last_grids.append(idx)
+        return WANDER_GRIDS[idx]
+
+    def _next_pitch(self, cur, jump7):
+        pool = self.pool
+        if jump7:
+            direction = -1 if jump7 > 0 else 1
+            cands = [p for p in pool if 1 <= (p - cur) * direction <= 3]
+            if cands:
+                return self.rng.choice(cands), 0
+        if self.rng.random() < 0.12:
+            opts = [cur + 7, cur - 7]
+            opts = [p for p in opts if p in pool]
+            if opts:
+                p = self.rng.choice(opts)
+                return p, p - cur
+        cands = [p for p in pool if 1 <= abs(p - cur) <= 5]
+        if not cands:
+            cands = [p for p in pool if p != cur] or list(pool)
+        return self.rng.choice(cands), 0
+
+    def _plan_melody(self, bars):
+        pool = self.pool
+        if not pool:
+            return
+        nbody = max(b["bar"] for b in bars if b["kind"] != "ending") + 1
+        bybar = {b["bar"]: b for b in bars}
+        motif_pitches = None
+        motif_rel = None
+        repeated = 0
+        start_pitch = pool[len(pool) // 2]
+        for ph0 in range(0, nbody, 4):
+            ph = [i for i in range(ph0, min(ph0 + 4, nbody)) if bybar[i]["kind"] == "wander"]
+            if not ph:
+                continue
+            first = bybar[ph[0]]
+            transform = "new"
+            if motif_pitches is not None:
+                opts = ["chord", "shift", "inv", "trunc", "new"]
+                if repeated < 1:
+                    opts.append("repeat")
+                transform = self.rng.choice(opts)
+            if transform == "new" or motif_pitches is None:
+                k = self.rng.randint(2, 4)
+                cur = _snap_chord_tone(start_pitch, first["segs"][0][0], self.shift, pool)
+                pitches = [cur]
+                jump7 = 0
+                for _ in range(k - 1):
+                    cur, jump7 = self._next_pitch(cur, jump7)
+                    pitches.append(cur)
+                rel = []
+                used = set()
+                for _ in range(k):
+                    bti = self.rng.choice([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0])
+                    bar_off = self.rng.randrange(len(ph))
+                    key = (bar_off, bti)
+                    if key in used:
+                        continue
+                    used.add(key)
+                    rel.append((bar_off, bti))
+                while len(rel) < k:
+                    rel.append((len(rel) % len(ph), 0.0))
+                rel = sorted(rel)[:k]
+                motif_pitches, motif_rel = pitches, rel
+                repeated = 0
+            elif transform == "repeat":
+                repeated += 1
+                pitches, rel = list(motif_pitches), list(motif_rel)
+            elif transform == "inv":
+                p0 = motif_pitches[0]
+                pitches = []
+                for p in motif_pitches:
+                    q = p0 - (p - p0)
+                    pitches.append(min(pool, key=lambda m: abs(m - q)))
+                rel = list(motif_rel)
+            elif transform == "trunc":
+                pitches = list(motif_pitches[:-1] or motif_pitches)
+                rel = list(motif_rel[:len(pitches)])
+            elif transform == "shift":
+                delta = 0.5 if self.rng.random() < 0.5 else -0.5
+                rel = []
+                for bo, bt in motif_rel:
+                    nb = bt + delta
+                    if nb < 0:
+                        rel.append((bo, 0.0))
+                    elif nb >= 4:
+                        rel.append((bo, 3.0))
+                    else:
+                        rel.append((bo, nb))
+                pitches = list(motif_pitches)
+            else:
+                pitches = [_snap_chord_tone(p, first["segs"][0][0], self.shift, pool)
+                           for p in motif_pitches]
+                rel = list(motif_rel)
+            start_pitch = pitches[0]
+            placed = {i: [] for i in ph}
+            for pitch, (bo, bt) in zip(pitches, rel):
+                bi = ph[min(bo, len(ph) - 1)]
+                b = bybar[bi]
+                name = _chord_at_beat(b["segs"], bt)
+                strong = abs(bt % 2) < 1e-6
+                if strong:
+                    pitch = _snap_chord_tone(pitch, name, self.shift, pool)
+                elif pitch not in pool:
+                    pitch = min(pool, key=lambda m: abs(m - pitch))
+                placed[bi].append((bt, pitch))
+            for bi, notes in placed.items():
+                if self.rng.random() < 0.20:
+                    continue
+                notes = sorted(notes)[:2]
+                if notes:
+                    self.mel.setdefault(bi, []).extend(notes)
+            if transform != "repeat":
+                motif_pitches, motif_rel = pitches, rel
+
+
+def _role_note(v, root, role):
+    v4 = [x for x in v if x[0] < 5] or list(v)
+    if role == "root":
+        for s, n in v4:
+            if (n - root) % 12 == 0:
+                return (s, n)
+        return v4[0]
+    if role == "fifth":
+        for s, n in v4:
+            if (n - root) % 12 == 7:
+                return (s, n)
+        return v4[min(1, len(v4) - 1)]
+    if role == "alt":
+        thumb = [x for x in v4 if x[0] <= 3] or v4
+        return pick_alt(thumb, root)
+    return v4[-1]
+
+
+def wander_bar(p, t0, beats, v, root, wctx, accent):
+    if accent:
+        wctx.cur_grid = wctx.pick_grid()
+        wctx.cur_bias = wctx.vel_bias()
+    grid = wctx.cur_grid
+    bias = wctx.cur_bias
+    slot_max = int(beats * 2)
+    cells = [(sl, roles) for sl, roles in grid if sl < slot_max]
+    if not any(sl == 0 and "root" in roles for sl, roles in cells):
+        cells = [(0, ("root",))] + [(sl, r) for sl, r in cells if sl != 0]
+    e = p.beat / 2
+    taken = {sl for sl, _ in cells}
+    if slot_max >= 8:
+        for cand in (2, 5, 7, 1, 3):
+            if cand not in taken:
+                cells.append((cand, ("tre",)))
+                taken.add(cand)
+                break
+        if wctx.rng.random() < 0.45:
+            for cand in (1, 3, 5, 7):
+                if cand not in taken:
+                    cells.append((cand, ("alt",)))
+                    break
+    for sl, roles in cells:
+        t = t0 + sl * e
+        for role in roles:
+            s, n = _role_note(v, root, role)
+            vel = 66 if role == "root" else 54
+            vel = int(vel + bias)
+            p.play(p.hum(t), s, n, vel)
+
+
+def wander_melody(p, t_bar, bar, wctx):
+    for beat, pitch in wctx.mel.get(bar, []):
+        mt = t_bar + beat * p.beat + 0.012
+        vel = int(48 + getattr(wctx, "cur_bias", 0) * 0.3)
+        p.play(mt, 5, pitch, vel)
+
+
 # ---------------------------------------------------------------- 作曲
 def plan_bars(dur, bpm, seed, pattern):
+    if pattern == "wander":
+        return plan_wander(dur, bpm, seed)
     rng = random.Random(seed)
     bar = 240.0 / bpm
     n = int((dur - LEAD - TAIL) // bar)
@@ -248,6 +581,7 @@ def breath(p, t0, beats, v, slow=0.075, vel=56, extra=True):
 
 def perform(bars, bpm, shift, dens, seed, dur):
     p = Perf(seed, bpm)
+    wctx = WanderCtx(seed, shift, bars) if any(b["kind"] == "wander" for b in bars) else None
     bar_sec = 4 * p.beat
     for b in bars:
         pos = 0.0
@@ -259,7 +593,11 @@ def perform(bars, bpm, shift, dens, seed, dur):
             root = (ROOT_PC[name] + shift) % 12
             accent = pos == 0
             kind = b["kind"]
-            if kind == "finger":
+            if kind == "wander":
+                wander_bar(p, t0, beats, v, root, wctx, accent)
+                if accent:
+                    wander_melody(p, LEAD + b["bar"] * bar_sec, b["bar"], wctx)
+            elif kind == "finger":
                 travis(p, t0, beats, v, root, dens, accent)
             elif kind == "sparse":
                 sparse(p, t0, beats, v, root, dens, accent)
@@ -423,7 +761,7 @@ def main():
     ap.add_argument("--key", default="D", choices=list(KEY_OFFSET), help="相当于变调夹移调")
     ap.add_argument("--bpm", type=float, default=96.0)
     ap.add_argument("--density", type=float, default=0.85, help="高音填充/上扫保留概率 0–1")
-    ap.add_argument("--pattern", default="mix", choices=["mix", "finger", "strum", "sparse"])
+    ap.add_argument("--pattern", default="mix", choices=["mix", "finger", "strum", "sparse", "wander"])
     ap.add_argument("--guitar", default="steel", choices=list(GUITAR_PROGRAM))
     ap.add_argument("--reverb", type=float, default=0.35, help="0–1")
     ap.add_argument("--gain", type=float, default=0.4, help="fluidsynth 增益（最终会归一化）")
